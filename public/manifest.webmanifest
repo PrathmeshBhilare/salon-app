@@ -1,0 +1,20 @@
+{
+  "name": "Glow & Glamour Hair Studio",
+  "short_name": "Glow & Glamour",
+  "description": "Premium salon booking & management for Glow & Glamour Hair Studio — Lhasurane & Koregaon.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1c1714",
+  "theme_color": "#b08d57",
+  "categories": ["business", "lifestyle", "beauty"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
