@@ -54,13 +54,13 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={{ ["--font-display" as string]: '"Playfair Display", ui-serif, Georgia, serif' }}
+        style={{ ["--font-display" as string]: '"Cormorant Garamond", ui-serif, Georgia, serif' }}
       >
         <Providers>{children}</Providers>
         {/* WARNING FOR AGENT: DO NOT REMOVE THIS SCRIPT */}
