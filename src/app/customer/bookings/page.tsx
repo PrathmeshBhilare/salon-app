@@ -81,10 +81,14 @@ export default function CustomerBookings() {
             </Button>
             <Button
               className="bg-rose-600 hover:bg-rose-700"
-              onClick={() => {
+              onClick={async () => {
                 if (toCancel) {
-                  cancelAppointment(toCancel);
-                  toast.success("Appointment cancelled");
+                  try {
+                    await cancelAppointment(toCancel);
+                    toast.success("Appointment cancelled");
+                  } catch {
+                    toast.error("Could not cancel");
+                  }
                 }
                 setToCancel(null);
               }}

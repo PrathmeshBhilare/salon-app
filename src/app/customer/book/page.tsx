@@ -87,8 +87,8 @@ export default function BookPage() {
     if (step > 0) setStep((s) => s - 1);
   }
 
-  function submit() {
-    const appt = bookAppointment({
+  async function submit() {
+    const appt = await bookAppointment({
       customerId: currentUser!.id,
       customerName: currentUser!.fullName,
       customerPhone: currentUser!.phone,

@@ -21,59 +21,21 @@ import type {
   ShopStatus,
   User,
 } from "./types";
-import {
-  BRANCHES,
-  STATUS_LABELS,
-} from "./types";
+import { BRANCHES, STATUS_LABELS } from "./types";
 import {
   addDaysISO,
-  generateId,
   generateReference,
-  generateUserId,
   todayISO,
 } from "./format";
-import {
-  seedAppointments,
-  seedBranches,
-  seedNotifications,
-  seedOffers,
-  seedQueue,
-  seedServices,
-  seedUsers,
-} from "./seed";
+import { authService } from "./services/authService";
+import { userService } from "./services/userService";
+import { branchService } from "./services/branchService";
+import { serviceService } from "./services/serviceService";
+import { offerService } from "./services/offerService";
+import { appointmentService } from "./services/appointmentService";
+import { notificationService } from "./services/notificationService";
 
-const STORAGE_KEY = "gg_studio_state_v1";
-const SESSION_KEY = "gg_studio_session_v1";
 const AVG_SERVICE_MIN = 30;
-
-interface PersistShape {
-  users: User[];
-  branches: Branch[];
-  services: Service[];
-  offers: Offer[];
-  appointments: Appointment[];
-  queue: Record<string, QueueEntry[]>;
-  notifications: AppNotification[];
-  serving: Record<string, number | null>;
-  tokenSeq: Record<string, number>;
-}
-
-interface BookInput {
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
-  branchId: BranchId;
-  serviceIds: string[];
-  date: string;
-  time: string;
-  notes?: string;
-}
-
-type NotifyInput = Partial<AppNotification> & {
-  title: string;
-  message: string;
-  kind: AppNotification["kind"];
-};
 
 interface DataContextValue {
   ready: boolean;
@@ -87,595 +49,527 @@ interface DataContextValue {
   serving: Record<string, number | null>;
   currentUser: User | null;
   activeBranchId: BranchId;
-  // auth
-  login: (identifier: string, password: string) => { ok: boolean; error?: string };
+  login: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   register: (input: {
     fullName: string;
     phone: string;
     email: string;
     password: string;
     preferredBranch: BranchId;
-  }) => { ok: boolean; error?: string; user?: User };
-  logout: () => void;
-  updatePassword: (current: string, next: string) => { ok: boolean; error?: string };
-  // branch
+  }) => Promise<{ ok: boolean; error?: string; user?: User }>;
+  logout: () => Promise<void>;
+  updatePassword: (current: string, next: string) => Promise<{ ok: boolean; error?: string }>;
   setActiveBranch: (id: BranchId) => void;
-  // appointments
-  bookAppointment: (input: BookInput) => Appointment;
-  confirmAppointment: (id: string) => void;
-  rejectAppointment: (id: string) => void;
-  checkInAppointment: (id: string) => void;
-  startService: (id: string, staffId?: string) => void;
-  completeAppointment: (id: string) => void;
-  markNoShow: (id: string) => void;
-  cancelAppointment: (id: string) => void;
-  // queue
-  joinWalkIn: (branchId: BranchId, customerName: string, serviceIds: string[]) => QueueEntry;
-  callNext: (branchId: BranchId) => void;
-  leaveQueue: (branchId: BranchId, token: number) => void;
-  // staff
+  bookAppointment: (input: {
+    customerId: string;
+    customerName: string;
+    customerPhone: string;
+    branchId: BranchId;
+    serviceIds: string[];
+    date: string;
+    time: string;
+    notes?: string;
+  }) => Promise<Appointment>;
+  confirmAppointment: (id: string) => Promise<void>;
+  rejectAppointment: (id: string) => Promise<void>;
+  checkInAppointment: (id: string) => Promise<void>;
+  startService: (id: string, staffId?: string) => Promise<void>;
+  completeAppointment: (id: string) => Promise<void>;
+  markNoShow: (id: string) => Promise<void>;
+  cancelAppointment: (id: string) => Promise<void>;
+  joinWalkIn: (branchId: BranchId, customerName: string, serviceIds: string[]) => Promise<QueueEntry>;
+  callNext: (branchId: BranchId) => Promise<void>;
+  leaveQueue: (branchId: BranchId, token: number) => Promise<void>;
   convertToStaff: (
     userId: string,
     data: { branch: BranchId; position: string; services: string[] }
-  ) => { ok: boolean; error?: string };
-  toggleStaffActive: (userId: string) => void;
-  // services
-  addService: (s: Omit<Service, "id">) => void;
-  updateService: (id: string, patch: Partial<Service>) => void;
-  deleteService: (id: string) => void;
-  toggleService: (id: string) => void;
-  // offers
-  addOffer: (o: Omit<Offer, "id">) => void;
-  updateOffer: (id: string, patch: Partial<Offer>) => void;
-  deleteOffer: (id: string) => void;
-  toggleOffer: (id: string) => void;
-  // notifications
-  notify: (input: NotifyInput) => void;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
+  ) => Promise<{ ok: boolean; error?: string }>;
+  toggleStaffActive: (userId: string) => Promise<void>;
+  addService: (s: Omit<Service, "id">) => Promise<void>;
+  updateService: (id: string, patch: Partial<Service>) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
+  toggleService: (id: string) => Promise<void>;
+  addOffer: (o: Omit<Offer, "id">) => Promise<void>;
+  updateOffer: (id: string, patch: Partial<Offer>) => Promise<void>;
+  deleteOffer: (id: string) => Promise<void>;
+  toggleOffer: (id: string) => Promise<void>;
+  notify: (input: Partial<AppNotification> & { title: string; message: string; kind: AppNotification["kind"] }) => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
   notificationsFor: (user: User) => AppNotification[];
   unreadCount: (user: User) => number;
-  // derived
   getBranch: (id: BranchId) => Branch;
   getServicesFor: (branchId: BranchId) => Service[];
   getOffersFor: (branchId: BranchId) => Offer[];
   getAppointmentsForBranch: (branchId: BranchId) => Appointment[];
   getShopStatus: (branchId: BranchId) => ShopStatus;
-  resetDemo: () => void;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
 
-function seedState(): PersistShape {
-  return {
-    users: seedUsers,
-    branches: seedBranches,
-    services: seedServices,
-    offers: seedOffers,
-    appointments: seedAppointments,
-    queue: seedQueue,
-    notifications: seedNotifications,
-    serving: { lhasurane: null, koregaon: null },
-    tokenSeq: { lhasurane: 3, koregaon: 2 },
-  };
-}
-
-function loadState(): PersistShape {
-  if (typeof window === "undefined") return seedState();
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return seedState();
-    const parsed = JSON.parse(raw) as PersistShape;
-    if (!parsed.users) return seedState();
-    return parsed;
-  } catch {
-    return seedState();
-  }
-}
-
-export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<PersistShape>(seedState);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeBranchId, setActiveBranchId] = useState<BranchId>("lhasurane");
-  const [ready, setReady] = useState(false);
-  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const loaded = loadState();
-    setState(loaded);
-    const sessionRaw = window.localStorage.getItem(SESSION_KEY);
-    if (sessionRaw) {
-      try {
-        const id = JSON.parse(sessionRaw) as string;
-        const u = loaded.users.find((x) => x.id === id);
-        if (u) {
-          setCurrentUser(u);
-          setActiveBranchId(u.role === "customer" ? u.preferredBranch : (u.staffBranch ?? u.ownerBranch ?? "lhasurane"));
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    if (persistTimer.current) clearTimeout(persistTimer.current);
-    persistTimer.current = setTimeout(() => {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }, 150);
-  }, [state, ready]);
-
-  const persist = useCallback((next: PersistShape) => {
-    setState(next);
-  }, []);
-
-  const update = useCallback(
-    (mut: (s: PersistShape) => PersistShape) => {
-      setState((prev) => mut(prev));
-    },
-    []
-  );
-
-  const notify = useCallback(
-    (input: NotifyInput) => {
-      const n: AppNotification = {
-        id: generateId("ntf"),
-        read: false,
-        createdAt: new Date().toISOString(),
-        recipientId: input.recipientId,
-        audience: input.audience,
-        branchId: input.branchId,
-        title: input.title,
-        message: input.message,
-        kind: input.kind,
-      };
-      update((s) => ({ ...s, notifications: [n, ...s.notifications].slice(0, 200) }));
-    },
-    [update]
-  );
-
-  const login = useCallback<DataContextValue["login"]>((identifier, password) => {
-    const id = identifier.trim().toLowerCase();
-    const u = state.users.find(
-      (x) =>
-        x.email.toLowerCase() === id ||
-        x.phone.replace(/\s/g, "") === identifier.replace(/\s/g, "") ||
-        x.id.toLowerCase() === id
-    );
-    if (!u) return { ok: false, error: "Account not found." };
-    if (u.password !== password) return { ok: false, error: "Incorrect password." };
-    setCurrentUser(u);
-    setActiveBranchId(u.role === "customer" ? u.preferredBranch : (u.staffBranch ?? u.ownerBranch ?? "lhasurane"));
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(u.id));
-    return { ok: true };
-  }, [state.users]);
-
-  const register = useCallback<DataContextValue["register"]>((input) => {
-    const email = input.email.trim().toLowerCase();
-    if (state.users.some((x) => x.email.toLowerCase() === email)) {
-      return { ok: false, error: "An account with this email already exists." };
-    }
-    const user: User = {
-      id: generateUserId(),
-      fullName: input.fullName.trim(),
-      phone: input.phone.trim(),
-      email,
-      password: input.password,
-      preferredBranch: input.preferredBranch,
-      role: "customer",
-      avatarColor: "#b08d57",
-      createdAt: new Date().toISOString(),
-      active: true,
-    };
-    update((s) => ({ ...s, users: [...s.users, user] }));
-    setCurrentUser(user);
-    setActiveBranchId(user.preferredBranch);
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(user.id));
-    notify({
-      title: "Welcome to Glow & Glamour",
-      message: "Your account is ready. Book your first appointment!",
-      kind: "system",
-      recipientId: user.id,
-    });
-    return { ok: true, user };
-  }, [state.users, update, notify]);
-
-  const logout = useCallback(() => {
-    setCurrentUser(null);
-    window.localStorage.removeItem(SESSION_KEY);
-  }, []);
-
-  const updatePassword = useCallback<DataContextValue["updatePassword"]>((current, next) => {
-    if (!currentUser) return { ok: false, error: "Not signed in." };
-    if (currentUser.password !== current) return { ok: false, error: "Current password is wrong." };
-    const updated = { ...currentUser, password: next };
-    update((s) => ({ ...s, users: s.users.map((u) => (u.id === updated.id ? updated : u)) }));
-    setCurrentUser(updated);
-    return { ok: true };
-  }, [currentUser, update]);
-
-  const setActiveBranch = useCallback((id: BranchId) => setActiveBranchId(id), []);
-
-  const bookAppointment = useCallback<DataContextValue["bookAppointment"]>((input) => {
-    const appt: Appointment = {
-      id: generateId("appt"),
-      reference: generateReference(),
-      customerId: input.customerId,
-      customerName: input.customerName,
-      customerPhone: input.customerPhone,
-      branchId: input.branchId,
-      serviceIds: input.serviceIds,
-      date: input.date,
-      time: input.time,
-      status: "pending",
-      isWalkIn: false,
-      token: null,
-      createdAt: new Date().toISOString(),
-      notes: input.notes,
-    };
-    update((s) => ({ ...s, appointments: [appt, ...s.appointments] }));
-    notify({
-      title: "Booking Received",
-      message: `Your appointment at ${input.branchId === "lhasurane" ? "Lhasurane" : "Koregaon"} is pending confirmation.`,
-      kind: "booking",
-      recipientId: input.customerId,
-    });
-    notify({
-      title: "New Booking",
-      message: `${input.customerName} booked for ${input.date} at ${input.time}.`,
-      kind: "booking",
-      audience: "staff",
-      branchId: input.branchId,
-    });
-    notify({
-      title: "New Booking",
-      message: `${input.customerName} booked at ${input.branchId === "lhasurane" ? "Lhasurane" : "Koregaon"}.`,
-      kind: "booking",
-      audience: "owner",
-    });
-    return appt;
-  }, [update, notify]);
-
-  const confirmAppointment = useCallback<DataContextValue["confirmAppointment"]>((id) => {
-    update((s) => ({
-      ...s,
-      appointments: s.appointments.map((a) =>
-        a.id === id ? { ...a, status: "confirmed" } : a
-      ),
-    }));
-    const a = state.appointments.find((x) => x.id === id);
-    if (a) {
-      notify({
-        title: "Booking Confirmed",
-        message: `Your appointment on ${a.date} at ${a.time} is confirmed.`,
-        kind: "booking",
-        recipientId: a.customerId,
-      });
-    }
-  }, [update, state.appointments, notify]);
-
-  const rejectAppointment = useCallback<DataContextValue["rejectAppointment"]>((id) => {
-    update((s) => ({
-      ...s,
-      appointments: s.appointments.map((a) =>
-        a.id === id ? { ...a, status: "rejected" } : a
-      ),
-    }));
-    const a = state.appointments.find((x) => x.id === id);
-    if (a) {
-      notify({
-        title: "Booking Rejected",
-        message: `Sorry, your appointment on ${a.date} could not be accommodated.`,
-        kind: "cancel",
-        recipientId: a.customerId,
-      });
-    }
-  }, [update, state.appointments, notify]);
-
-  const checkInAppointment = useCallback<DataContextValue["checkInAppointment"]>((id) => {
-    update((s) => {
-      const a = s.appointments.find((x) => x.id === id);
-      if (!a || a.status === "checked_in" || a.status === "in_service" || a.status === "completed") {
-        return s;
-      }
-      const nextToken = (s.tokenSeq[a.branchId] ?? 0) + 1;
-      const entry: QueueEntry = {
-        token: nextToken,
+function deriveQueue(appointments: Appointment[]): Record<string, QueueEntry[]> {
+  const m: Record<string, QueueEntry[]> = { lhasurane: [], koregaon: [] };
+  for (const a of appointments) {
+    if (a.status === "checked_in" && a.token != null) {
+      m[a.branchId].push({
+        token: a.token,
         appointmentId: a.id,
         customerName: a.customerName,
         branchId: a.branchId,
         isWalkIn: a.isWalkIn,
-        joinedAt: new Date().toISOString(),
-      };
-      return {
-        ...s,
-        tokenSeq: { ...s.tokenSeq, [a.branchId]: nextToken },
-        appointments: s.appointments.map((x) =>
-          x.id === id ? { ...x, status: "checked_in", token: nextToken } : x
-        ),
-        queue: { ...s.queue, [a.branchId]: [...(s.queue[a.branchId] ?? []), entry] },
-      };
-    });
-  }, [update]);
-
-  const startService = useCallback<DataContextValue["startService"]>((id, staffId) => {
-    update((s) => {
-      const a = s.appointments.find((x) => x.id === id);
-      if (!a) return s;
-      const serving = a.token;
-      return {
-        ...s,
-        serving: { ...s.serving, [a.branchId]: serving },
-        appointments: s.appointments.map((x) =>
-          x.id === id ? { ...x, status: "in_service", assignedStaffId: staffId ?? x.assignedStaffId } : x
-        ),
-        queue: { ...s.queue, [a.branchId]: (s.queue[a.branchId] ?? []).filter((q) => q.appointmentId !== id) },
-      };
-    });
-  }, [update]);
-
-  const completeAppointment = useCallback<DataContextValue["completeAppointment"]>((id) => {
-    update((s) => {
-      const a = s.appointments.find((x) => x.id === id);
-      if (!a) return s;
-      return {
-        ...s,
-        serving: { ...s.serving, [a.branchId]: null },
-        appointments: s.appointments.map((x) =>
-          x.id === id ? { ...x, status: "completed", token: null } : x
-        ),
-      };
-    });
-  }, [update]);
-
-  const markNoShow = useCallback<DataContextValue["markNoShow"]>((id) => {
-    update((s) => {
-      const a = s.appointments.find((x) => x.id === id);
-      if (!a) return s;
-      return {
-        ...s,
-        appointments: s.appointments.map((x) =>
-          x.id === id ? { ...x, status: "no_show", token: null } : x
-        ),
-        queue: { ...s.queue, [a.branchId]: (s.queue[a.branchId] ?? []).filter((q) => q.appointmentId !== id) },
-      };
-    });
-  }, [update]);
-
-  const cancelAppointment = useCallback<DataContextValue["cancelAppointment"]>((id) => {
-    update((s) => {
-      const a = s.appointments.find((x) => x.id === id);
-      if (!a) return s;
-      return {
-        ...s,
-        appointments: s.appointments.map((x) =>
-          x.id === id ? { ...x, status: "cancelled", token: null } : x
-        ),
-        queue: { ...s.queue, [a.branchId]: (s.queue[a.branchId] ?? []).filter((q) => q.appointmentId !== id) },
-      };
-    });
-    const a = state.appointments.find((x) => x.id === id);
-    if (a) {
-      notify({
-        title: "Booking Cancelled",
-        message: `Your appointment on ${a.date} has been cancelled by the salon.`,
-        kind: "cancel",
-        recipientId: a.customerId,
+        joinedAt: a.queuedAt || a.createdAt,
       });
     }
-  }, [update, state.appointments, notify]);
+  }
+  for (const b of BRANCHES) {
+    m[b].sort((x, y) => (x.joinedAt || "").localeCompare(y.joinedAt || ""));
+  }
+  return m;
+}
 
-  const joinWalkIn = useCallback<DataContextValue["joinWalkIn"]>((branchId, customerName, serviceIds) => {
-    const appt: Appointment = {
-      id: generateId("appt"),
-      reference: generateReference(),
-      customerId: "walkin",
-      customerName,
-      customerPhone: "—",
-      branchId,
-      serviceIds: serviceIds.length ? serviceIds : [branchId === "lhasurane" ? "svc_lh_1" : "svc_ko_1"],
-      date: todayISO(),
-      time: new Date().toTimeString().slice(0, 5),
+export function DataProvider({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [activeBranchId, setActiveBranchId] = useState<BranchId>("lhasurane");
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const listeners = useRef<Array<() => void>>([]);
+
+  const queue = useMemo(() => deriveQueue(appointments), [appointments]);
+  const serving = useMemo(() => {
+    const m: Record<string, number | null> = { lhasurane: null, koregaon: null };
+    for (const b of branches) m[b.id] = b.nowServing ?? null;
+    return m;
+  }, [branches]);
+
+  const cleanup = useCallback(() => {
+    listeners.current.forEach((u) => u());
+    listeners.current = [];
+  }, []);
+
+  useEffect(() => {
+    const unsub = authService.onAuthChanged(async (fbUser) => {
+      cleanup();
+      if (!fbUser) {
+        setCurrentUser(null);
+        setBranches([]);
+        setServices([]);
+        setOffers([]);
+        setAppointments([]);
+        setNotifications([]);
+        setUsers([]);
+        setReady(true);
+        return;
+      }
+      try {
+        await branchService.ensureBranches();
+      } catch {
+        /* ignore if offline */
+      }
+      const user = await userService.getUserByUid(fbUser.uid);
+      if (!user) {
+        setCurrentUser(null);
+        setReady(true);
+        return;
+      }
+      setCurrentUser(user);
+      setActiveBranchId(
+        user.role === "customer"
+          ? user.preferredBranch
+          : (user.staffBranch ?? user.ownerBranch ?? "lhasurane")
+      );
+      const unsubs: Array<() => void> = [];
+      unsubs.push(branchService.onBranches(setBranches));
+      unsubs.push(serviceService.onServices(setServices));
+      unsubs.push(offerService.onOffers(setOffers));
+      unsubs.push(appointmentService.onAppointments(setAppointments));
+      unsubs.push(notificationService.onNotifications(user.id, user.role, setNotifications));
+      if (user.role === "owner") unsubs.push(userService.onUsers(setUsers));
+      listeners.current = unsubs;
+      setReady(true);
+    });
+    return () => unsub();
+  }, [cleanup]);
+
+  const login = useCallback(async (identifier: string, password: string) => {
+    try {
+      await authService.login(identifier.trim(), password);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: friendlyAuthError(e) };
+    }
+  }, []);
+
+  const register = useCallback(
+    async (input: {
+      fullName: string;
+      phone: string;
+      email: string;
+      password: string;
+      preferredBranch: BranchId;
+    }) => {
+      try {
+        const { userId } = await authService.register(input);
+        const user = await userService.get(userId);
+        return { ok: true, user: user ?? undefined };
+      } catch (e) {
+        return { ok: false, error: friendlyAuthError(e) };
+      }
+    },
+    []
+  );
+
+  const logout = useCallback(async () => {
+    cleanup();
+    await authService.logout();
+  }, [cleanup]);
+
+  const updatePassword = useCallback(async (current: string, next: string) => {
+    try {
+      await authService.updatePassword(current, next);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: friendlyAuthError(e) };
+    }
+  }, []);
+
+  const setActiveBranch = useCallback((id: BranchId) => setActiveBranchId(id), []);
+
+  const bookAppointment = useCallback<DataContextValue["bookAppointment"]>(
+    async (input) => {
+      const now = new Date().toISOString();
+      const reference = generateReference();
+      const appt: Appointment = {
+        id: "",
+        reference,
+        customerId: input.customerId,
+        customerUid: currentUser?.uid,
+        customerName: input.customerName,
+        customerPhone: input.customerPhone,
+        branchId: input.branchId,
+        serviceIds: input.serviceIds,
+        date: input.date,
+        time: input.time,
+        status: "pending",
+        isWalkIn: false,
+        token: null,
+        createdAt: now,
+        notes: input.notes,
+      };
+      const id = await appointmentService.add(appt);
+      appt.id = id;
+      await notificationService.create({
+        recipientId: input.customerId,
+        recipientUid: currentUser?.uid,
+        title: "Booking Received",
+        message: `Your appointment at ${branchLabel(input.branchId)} is pending confirmation.`,
+        kind: "booking",
+      });
+      await notificationService.create({
+        audience: "staff",
+        branchId: input.branchId,
+        title: "New Booking",
+        message: `${input.customerName} booked for ${input.date} at ${input.time}.`,
+        kind: "booking",
+      });
+      await notificationService.create({
+        audience: "owner",
+        title: "New Booking",
+        message: `${input.customerName} booked at ${branchLabel(input.branchId)}.`,
+        kind: "booking",
+      });
+      return appt;
+    },
+    []
+  );
+
+  const confirmAppointment = useCallback(async (id: string) => {
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return;
+    await appointmentService.update(id, {
+      status: "confirmed",
+      confirmedBy: currentUser?.id,
+      confirmedAt: new Date().toISOString(),
+    });
+    await notificationService.create({
+      recipientId: a.customerId,
+      recipientUid: a.customerUid,
+      title: "Booking Confirmed",
+      message: `Your appointment on ${a.date} at ${a.time} is confirmed.`,
+      kind: "booking",
+    });
+  }, [appointments, currentUser]);
+
+  const rejectAppointment = useCallback(async (id: string) => {
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return;
+    await appointmentService.update(id, { status: "rejected" });
+    await notificationService.create({
+      recipientId: a.customerId,
+      recipientUid: a.customerUid,
+      title: "Booking Rejected",
+      message: `Sorry, your appointment on ${a.date} could not be accommodated.`,
+      kind: "cancel",
+    });
+  }, [appointments]);
+
+  const checkInAppointment = useCallback(async (id: string) => {
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return;
+    const token = await branchService.assignToken(a.branchId);
+    await appointmentService.update(id, {
       status: "checked_in",
-      isWalkIn: true,
-      token: null,
-      createdAt: new Date().toISOString(),
-    };
-    let entry: QueueEntry | null = null;
-    update((s) => {
-      const nextToken = (s.tokenSeq[branchId] ?? 0) + 1;
-      entry = {
-        token: nextToken,
-        appointmentId: appt.id,
+      token,
+      queuedAt: new Date().toISOString(),
+    });
+  }, [appointments]);
+
+  const startService = useCallback(async (id: string, staffId?: string) => {
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return;
+    await appointmentService.update(id, {
+      status: "in_service",
+      assignedStaffId: staffId ?? currentUser?.id,
+    });
+    if (a.token != null) await branchService.setNowServing(a.branchId, a.token);
+  }, [appointments, currentUser]);
+
+  const completeAppointment = useCallback(async (id: string) => {
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return;
+    await appointmentService.update(id, { status: "completed", token: null });
+    if (a.token != null && serving[a.branchId] === a.token)
+      await branchService.setNowServing(a.branchId, null);
+  }, [appointments, serving]);
+
+  const markNoShow = useCallback(async (id: string) => {
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return;
+    await appointmentService.update(id, { status: "no_show", token: null });
+    if (a.token != null && serving[a.branchId] === a.token)
+      await branchService.setNowServing(a.branchId, null);
+  }, [appointments, serving]);
+
+  const cancelAppointment = useCallback(async (id: string) => {
+    const a = appointments.find((x) => x.id === id);
+    if (!a) return;
+    await appointmentService.update(id, { status: "cancelled", token: null });
+    await notificationService.create({
+      recipientId: a.customerId,
+      recipientUid: a.customerUid,
+      title: "Booking Cancelled",
+      message: `Your appointment on ${a.date} has been cancelled by the salon.`,
+      kind: "cancel",
+    });
+    if (a.token != null && serving[a.branchId] === a.token)
+      await branchService.setNowServing(a.branchId, null);
+  }, [appointments, serving]);
+
+  const joinWalkIn = useCallback<DataContextValue["joinWalkIn"]>(
+    async (branchId, customerName, serviceIds) => {
+      const now = new Date().toISOString();
+      const token = await branchService.assignToken(branchId);
+      const appt: Appointment = {
+        id: "",
+        reference: generateReference(),
+        customerId: "walkin",
+        customerName,
+        customerPhone: "—",
+        branchId,
+        serviceIds: serviceIds.length ? serviceIds : [branchId === "lhasurane" ? "svc_lh_1" : "svc_ko_1"],
+        date: todayISO(),
+        time: new Date().toTimeString().slice(0, 5),
+        status: "checked_in",
+        isWalkIn: true,
+        token,
+        createdAt: now,
+        queuedAt: now,
+      };
+      const id = await appointmentService.add(appt);
+      await notificationService.create({
+        audience: "staff",
+        branchId,
+        title: "Walk-in Joined",
+        message: `${customerName} joined the queue at ${branchLabel(branchId)}.`,
+        kind: "queue",
+      });
+      return {
+        token,
+        appointmentId: id,
         customerName,
         branchId,
         isWalkIn: true,
-        joinedAt: new Date().toISOString(),
+        joinedAt: now,
       };
-      return {
-        ...s,
-        tokenSeq: { ...s.tokenSeq, [branchId]: nextToken },
-        appointments: [appt, ...s.appointments],
-        queue: { ...s.queue, [branchId]: [...(s.queue[branchId] ?? []), entry!] },
-      };
-    });
-    notify({
-      title: "Walk-in Joined",
-      message: `${customerName} joined the queue at ${branchId === "lhasurane" ? "Lhasurane" : "Koregaon"}.`,
-      kind: "queue",
-      audience: "staff",
-      branchId,
-    });
-    return entry!;
-  }, [update, notify]);
+    },
+    []
+  );
 
-  const callNext = useCallback<DataContextValue["callNext"]>((branchId) => {
-    update((s) => {
-      const q = s.queue[branchId] ?? [];
-      if (q.length === 0) return s;
-      const next = q[0];
-      return {
-        ...s,
-        serving: { ...s.serving, [branchId]: next.token },
-        appointments: s.appointments.map((x) =>
-          x.id === next.appointmentId ? { ...x, status: "in_service" } : x
-        ),
-        queue: { ...s.queue, [branchId]: q.slice(1) },
-      };
-    });
-  }, [update]);
+  const callNext = useCallback(
+    async (branchId: BranchId) => {
+      const q = queue[branchId] ?? [];
+      if (q.length === 0) return;
+      await startService(q[0].appointmentId, currentUser?.id);
+    },
+    [queue, startService, currentUser]
+  );
 
-  const leaveQueue = useCallback<DataContextValue["leaveQueue"]>((branchId, token) => {
-    update((s) => ({
-      ...s,
-      queue: { ...s.queue, [branchId]: (s.queue[branchId] ?? []).filter((q) => q.token !== token) },
-    }));
-  }, [update]);
-
-  const convertToStaff = useCallback<DataContextValue["convertToStaff"]>((userId, data) => {
-    const target = state.users.find((u) => u.id === userId);
-    if (!target) return { ok: false, error: "User not found." };
-    if (target.role === "staff") return { ok: false, error: "This user is already staff." };
-    if (state.users.some((u) => u.role === "staff" && u.phone === target.phone)) {
-      return { ok: false, error: "A staff account with this phone already exists." };
+  const leaveQueue = useCallback(async (branchId: BranchId, token: number) => {
+    const entry = (queue[branchId] ?? []).find((e) => e.token === token);
+    if (entry?.appointmentId) {
+      await appointmentService.update(entry.appointmentId, { status: "cancelled", token: null });
     }
-    const updated: User = {
-      ...target,
-      role: "staff",
-      staffBranch: data.branch,
-      staffPosition: data.position,
-      staffServices: data.services,
-      active: true,
-    };
-    update((s) => ({ ...s, users: s.users.map((u) => (u.id === userId ? updated : u)) }));
-    if (currentUser?.id === userId) setCurrentUser(updated);
-    notify({
-      title: "You are now Staff",
-      message: `You have been activated as ${data.position} at ${data.branch === "lhasurane" ? "Lhasurane" : "Koregaon"}.`,
-      kind: "system",
-      recipientId: userId,
-    });
-    return { ok: true };
-  }, [state.users, update, currentUser, notify]);
+  }, [queue]);
 
-  const toggleStaffActive = useCallback<DataContextValue["toggleStaffActive"]>((userId) => {
-    update((s) => ({
-      ...s,
-      users: s.users.map((u) =>
-        u.id === userId && u.role === "staff" ? { ...u, active: !u.active } : u
-      ),
-    }));
-  }, [update]);
+  const convertToStaff = useCallback<DataContextValue["convertToStaff"]>(
+    async (userId, data) => {
+      const target = users.find((u) => u.id === userId);
+      if (!target) return { ok: false, error: "User not found." };
+      if (target.role === "staff") return { ok: false, error: "This user is already staff." };
+      if (users.some((u) => u.role === "staff" && u.phone === target.phone))
+        return { ok: false, error: "A staff account with this phone already exists." };
+      await userService.convertToStaff(userId, data);
+      await notificationService.create({
+        recipientId: userId,
+        title: "You are now Staff",
+        message: `You have been activated as ${data.position} at ${branchLabel(data.branch)}.`,
+        kind: "system",
+      });
+      return { ok: true };
+    },
+    [users]
+  );
 
-  const addService = useCallback<DataContextValue["addService"]>((svc) => {
-    update((s) => ({ ...s, services: [...s.services, { ...svc, id: generateId("svc") }] }));
-  }, [update]);
+  const toggleStaffActive = useCallback(async (userId: string) => {
+    await userService.toggleStaffActive(userId);
+  }, []);
 
-  const updateService = useCallback<DataContextValue["updateService"]>((id, patch) => {
-    update((s) => ({ ...s, services: s.services.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
-  }, [update]);
+  const addService = useCallback(async (s: Omit<Service, "id">) => {
+    await serviceService.add(s);
+  }, []);
 
-  const deleteService = useCallback<DataContextValue["deleteService"]>((id) => {
-    update((s) => ({ ...s, services: s.services.filter((x) => x.id !== id) }));
-  }, [update]);
+  const updateService = useCallback(async (id: string, patch: Partial<Service>) => {
+    await serviceService.update(id, patch);
+  }, []);
 
-  const toggleService = useCallback<DataContextValue["toggleService"]>((id) => {
-    update((s) => ({ ...s, services: s.services.map((x) => (x.id === id ? { ...x, active: !x.active } : x)) }));
-  }, [update]);
+  const deleteService = useCallback(async (id: string) => {
+    await serviceService.remove(id);
+  }, []);
 
-  const addOffer = useCallback<DataContextValue["addOffer"]>((o) => {
-    update((s) => ({ ...s, offers: [{ ...o, id: generateId("off") }, ...s.offers] }));
-  }, [update]);
+  const toggleService = useCallback(
+    async (id: string) => {
+      const s = services.find((x) => x.id === id);
+      if (s) await serviceService.update(id, { active: !s.active });
+    },
+    [services]
+  );
 
-  const updateOffer = useCallback<DataContextValue["updateOffer"]>((id, patch) => {
-    update((s) => ({ ...s, offers: s.offers.map((x) => (x.id === id ? { ...x, ...patch } : x)) }));
-  }, [update]);
+  const addOffer = useCallback(async (o: Omit<Offer, "id">) => {
+    await offerService.add(o);
+  }, []);
 
-  const deleteOffer = useCallback<DataContextValue["deleteOffer"]>((id) => {
-    update((s) => ({ ...s, offers: s.offers.filter((x) => x.id !== id) }));
-  }, [update]);
+  const updateOffer = useCallback(async (id: string, patch: Partial<Offer>) => {
+    await offerService.update(id, patch);
+  }, []);
 
-  const toggleOffer = useCallback<DataContextValue["toggleOffer"]>((id) => {
-    update((s) => ({ ...s, offers: s.offers.map((x) => (x.id === id ? { ...x, active: !x.active } : x)) }));
-  }, [update]);
+  const deleteOffer = useCallback(async (id: string) => {
+    await offerService.remove(id);
+  }, []);
 
-  const markNotificationRead = useCallback<DataContextValue["markNotificationRead"]>((id) => {
-    update((s) => ({ ...s, notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) }));
-  }, [update]);
+  const toggleOffer = useCallback(
+    async (id: string) => {
+      const o = offers.find((x) => x.id === id);
+      if (o) await offerService.update(id, { active: !o.active });
+    },
+    [offers]
+  );
 
-  const markAllNotificationsRead = useCallback(() => {
-    update((s) => ({ ...s, notifications: s.notifications.map((n) => ({ ...n, read: true })) }));
-  }, [update]);
+  const notify = useCallback(
+    async (input: Partial<AppNotification> & { title: string; message: string; kind: AppNotification["kind"] }) => {
+      await notificationService.create(input);
+    },
+    []
+  );
 
-  const notificationsFor = useCallback<DataContextValue["notificationsFor"]>((user) => {
-    return state.notifications.filter((n) => {
-      if (n.recipientId) return n.recipientId === user.id;
-      if (n.audience) return n.audience === user.role;
-      if (n.branchId) return n.branchId === (user.role === "customer" ? user.preferredBranch : (user.staffBranch ?? user.ownerBranch));
-      return false;
-    });
-  }, [state.notifications]);
+  const markNotificationRead = useCallback(async (id: string) => {
+    await notificationService.markRead(id);
+  }, []);
 
-  const unreadCount = useCallback<DataContextValue["unreadCount"]>((user) => {
-    return notificationsFor(user).filter((n) => !n.read).length;
-  }, [notificationsFor]);
+  const markAllNotificationsRead = useCallback(async () => {
+    if (currentUser) await notificationService.markAllRead(currentUser.id);
+  }, [currentUser]);
 
-  const getBranch = useCallback<DataContextValue["getBranch"]>((id) => {
-    return state.branches.find((b) => b.id === id) ?? state.branches[0];
-  }, [state.branches]);
+  const notificationsFor = useCallback(
+    (user: User) =>
+      notifications.filter((n) => {
+        if (n.recipientId) return n.recipientId === user.id;
+        if (n.audience) return n.audience === user.role;
+        if (n.branchId) return n.branchId === (user.role === "customer" ? user.preferredBranch : (user.staffBranch ?? user.ownerBranch));
+        return false;
+      }),
+    [notifications]
+  );
 
-  const getServicesFor = useCallback<DataContextValue["getServicesFor"]>((branchId) => {
-    return state.services.filter((s) => s.branchId === branchId && s.active);
-  }, [state.services]);
+  const unreadCount = useCallback(
+    (user: User) => notificationsFor(user).filter((n) => !n.read).length,
+    [notificationsFor]
+  );
 
-  const getOffersFor = useCallback<DataContextValue["getOffersFor"]>((branchId) => {
-    return state.offers.filter((o) => o.branchId === branchId || o.branchId === "all");
-  }, [state.offers]);
+  const getBranch = useCallback(
+    (id: BranchId) => branches.find((b) => b.id === id) ?? (branches[0] as Branch),
+    [branches]
+  );
 
-  const getAppointmentsForBranch = useCallback<DataContextValue["getAppointmentsForBranch"]>((branchId) => {
-    return state.appointments.filter((a) => a.branchId === branchId);
-  }, [state.appointments]);
+  const getServicesFor = useCallback(
+    (branchId: BranchId) => services.filter((s) => s.branchId === branchId && s.active),
+    [services]
+  );
 
-  const getShopStatus = useCallback<DataContextValue["getShopStatus"]>((branchId) => {
-    const branch = state.branches.find((b) => b.id === branchId)!;
-    const q = state.queue[branchId] ?? [];
-    const inServiceCount = state.appointments.filter(
-      (a) => a.branchId === branchId && a.status === "in_service" && a.date === todayISO()
-    ).length;
-    const waitingCount = q.length;
-    const estimatedWaitMin = waitingCount * AVG_SERVICE_MIN;
-    return {
-      isOpen: branch.isOpen,
-      nowServingToken: state.serving[branchId] ?? null,
-      waitingCount,
-      inServiceCount,
-      estimatedWaitMin,
-      availableChairs: Math.max(0, branch.totalChairs - branch.totalChairs + branch.availableChairs - inServiceCount),
-      totalChairs: branch.totalChairs,
-    };
-  }, [state.branches, state.queue, state.appointments, state.serving]);
+  const getOffersFor = useCallback(
+    (branchId: BranchId) => offers.filter((o) => o.branchId === branchId || o.branchId === "all"),
+    [offers]
+  );
 
-  const resetDemo = useCallback(() => {
-    const fresh = seedState();
-    persist(fresh);
-    window.localStorage.removeItem(SESSION_KEY);
-    setCurrentUser(null);
-    setActiveBranchId("lhasurane");
-  }, [persist]);
+  const getAppointmentsForBranch = useCallback(
+    (branchId: BranchId) => appointments.filter((a) => a.branchId === branchId),
+    [appointments]
+  );
+
+  const getShopStatus = useCallback(
+    (branchId: BranchId): ShopStatus => {
+      const branch = branches.find((b) => b.id === branchId)!;
+      const q = queue[branchId] ?? [];
+      const inServiceCount = appointments.filter(
+        (a) => a.branchId === branchId && a.status === "in_service" && a.date === todayISO()
+      ).length;
+      return {
+        isOpen: branch.isOpen,
+        nowServingToken: serving[branchId] ?? null,
+        waitingCount: q.length,
+        inServiceCount,
+        estimatedWaitMin: q.length * AVG_SERVICE_MIN,
+        availableChairs: Math.max(0, branch.availableChairs - inServiceCount),
+        totalChairs: branch.totalChairs,
+      };
+    },
+    [branches, queue, appointments, serving]
+  );
 
   const value = useMemo<DataContextValue>(
     () => ({
       ready,
-      users: state.users,
-      branches: state.branches,
-      services: state.services,
-      offers: state.offers,
-      appointments: state.appointments,
-      queue: state.queue,
-      notifications: state.notifications,
-      serving: state.serving,
+      users,
+      branches,
+      services,
+      offers,
+      appointments,
+      queue,
+      notifications,
+      serving,
       currentUser,
       activeBranchId,
       login,
@@ -714,20 +608,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       getOffersFor,
       getAppointmentsForBranch,
       getShopStatus,
-      resetDemo,
     }),
     [
-      ready, state, currentUser, activeBranchId, login, register, logout, updatePassword,
-      setActiveBranch, bookAppointment, confirmAppointment, rejectAppointment, checkInAppointment,
-      startService, completeAppointment, markNoShow, cancelAppointment, joinWalkIn, callNext,
-      leaveQueue, convertToStaff, addService, updateService, deleteService, toggleService,
+      ready, users, branches, services, offers, appointments, queue, notifications, serving,
+      currentUser, activeBranchId, login, register, logout, updatePassword, setActiveBranch,
+      bookAppointment, confirmAppointment, rejectAppointment, checkInAppointment, startService,
+      completeAppointment, markNoShow, cancelAppointment, joinWalkIn, callNext, leaveQueue,
+      convertToStaff, toggleStaffActive, addService, updateService, deleteService, toggleService,
       addOffer, updateOffer, deleteOffer, toggleOffer, notify, markNotificationRead,
       markAllNotificationsRead, notificationsFor, unreadCount, getBranch, getServicesFor,
-      getOffersFor, getAppointmentsForBranch, getShopStatus, resetDemo,
+      getOffersFor, getAppointmentsForBranch, getShopStatus,
     ]
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+}
+
+function branchLabel(b: BranchId) {
+  return b === "lhasurane" ? "Lhasurane" : "Koregaon";
+}
+
+function friendlyAuthError(e: unknown): string {
+  const code = (e as { code?: string })?.code ?? "";
+  if (code.includes("auth/user-not-found") || code.includes("auth/wrong-password") || code.includes("auth/invalid-credential"))
+    return "Invalid email or password.";
+  if (code.includes("auth/email-already-in-use")) return "An account with this email already exists.";
+  if (code.includes("auth/weak-password")) return "Password should be at least 6 characters.";
+  if (code.includes("auth/network-request-failed")) return "Network error. Check your connection.";
+  if (code.includes("auth/requires-recent-login")) return "Please log in again to change your password.";
+  return "Something went wrong. Please try again.";
 }
 
 export function useData(): DataContextValue {

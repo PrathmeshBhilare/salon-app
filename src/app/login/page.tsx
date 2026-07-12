@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (!identifier || !password) {
@@ -33,7 +33,7 @@ export default function LoginPage() {
       return;
     }
     setLoading(true);
-    const res = login(identifier, password);
+    const res = await login(identifier, password);
     setLoading(false);
     if (!res.ok) {
       setError(res.error ?? "Login failed.");

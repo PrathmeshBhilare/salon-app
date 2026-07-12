@@ -16,6 +16,8 @@ export interface Branch {
   availableChairs: number;
   totalChairs: number;
   workingHours: WorkingHour[];
+  nextToken: number;
+  nowServing: number | null;
 }
 
 export interface WorkingHour {
@@ -27,14 +29,20 @@ export interface WorkingHour {
 
 export interface User {
   id: string;
+  uid: string;
+  userId: string;
   fullName: string;
   phone: string;
   email: string;
-  password: string;
+  password?: string;
   preferredBranch: BranchId;
   role: Role;
   avatarColor: string;
+  photoURL?: string;
+  fcmToken?: string;
+  status?: string;
   createdAt: string;
+  updatedAt?: string;
   // staff extras
   staffBranch?: BranchId;
   staffPosition?: string;
@@ -91,6 +99,11 @@ export interface Appointment {
   createdAt: string;
   notes?: string;
   assignedStaffId?: string;
+  customerUid?: string;
+  queuedAt?: string;
+  confirmedBy?: string;
+  confirmedAt?: string;
+  completedAt?: string;
 }
 
 export interface QueueEntry {
@@ -105,6 +118,7 @@ export interface QueueEntry {
 export interface AppNotification {
   id: string;
   recipientId?: string;
+  recipientUid?: string;
   audience?: Role;
   branchId?: BranchId;
   title: string;

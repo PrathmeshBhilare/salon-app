@@ -1,0 +1,77 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner() {
+      return signedIn() && request.auth.token.role == 'owner';
+    }
+    function isStaff() {
+      return signedIn() && request.auth.token.role == 'staff';
+    }
+
+    // ---- users ----
+    match /users/{id} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isOwner());
+      allow create: if signedIn() && request.auth.uid == request.resource.data.uid;
+      allow update: if signedIn() && (
+        resource.data.uid == request.auth.uid || isOwner()
+      );
+      allow delete: if isOwner();
+    }
+
+    // ---- branches ----
+    match /branches/{id} {
+      allow read: if signedIn();
+      allow write: if isOwner();
+    }
+
+    // ---- services ----
+    match /services/{id} {
+      allow read: if signedIn();
+      allow write: if isOwner();
+    }
+
+    // ---- offers ----
+    match /offers/{id} {
+      allow read: if signedIn();
+      allow write: if isOwner();
+    }
+
+    // ---- appointments ----
+    match /appointments/{id} {
+      allow read: if signedIn() && (
+        resource.data.customerUid == request.auth.uid ||
+        isOwner() ||
+        (isStaff() && resource.data.branchId == request.auth.token.branch)
+      );
+      allow create: if signedIn() && (
+        request.resource.data.customerUid == request.auth.uid || isOwner() || isStaff()
+      );
+      allow update, delete: if signedIn() && (
+        isOwner() || (isStaff() && resource.data.branchId == request.auth.token.branch)
+      );
+    }
+
+    // ---- notifications ----
+    match /notifications/{id} {
+      allow read: if signedIn() && (
+        resource.data.recipientUid == request.auth.uid ||
+        resource.data.audience == request.auth.token.role ||
+        (resource.data.branchId == request.auth.token.branch)
+      );
+      allow create: if signedIn();
+      allow update: if signedIn() && resource.data.recipientUid == request.auth.uid;
+      allow delete: if isOwner();
+    }
+
+    // ---- settings ----
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow write: if isOwner();
+    }
+  }
+}

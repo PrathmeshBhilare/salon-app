@@ -17,16 +17,22 @@ export function AppointmentActionCard({
   const { confirmAppointment, checkInAppointment, startService, completeAppointment, markNoShow, rejectAppointment, cancelAppointment } =
     useData();
 
+  const act = (fn: () => Promise<void>, msg: string) => () => {
+    fn()
+      .then(() => toast.success(msg))
+      .catch(() => toast.error("Action failed. Please try again."));
+  };
+
   const actions = (() => {
     switch (appointment.status) {
       case "pending":
         return (
           <>
-            <Button size="sm" className="gap-1" onClick={() => { confirmAppointment(appointment.id); toast.success("Confirmed"); }}>
+            <Button size="sm" className="gap-1" onClick={act(() => confirmAppointment(appointment.id), "Confirmed")}>
               <Check className="h-4 w-4" /> Confirm
             </Button>
             {(role === "owner" || role === "staff") && (
-              <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => { rejectAppointment(appointment.id); toast.success("Rejected"); }}>
+              <Button size="sm" variant="ghost" className="text-rose-500" onClick={act(() => rejectAppointment(appointment.id), "Rejected")}>
                 <X className="h-4 w-4" /> Reject
               </Button>
             )}
@@ -35,23 +41,23 @@ export function AppointmentActionCard({
       case "confirmed":
         return (
           <>
-            <Button size="sm" className="gap-1" onClick={() => { checkInAppointment(appointment.id); toast.success("Checked in"); }}>
+            <Button size="sm" className="gap-1" onClick={act(() => checkInAppointment(appointment.id), "Checked in")}>
               <UserCheck className="h-4 w-4" /> Check In
             </Button>
-            <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => { markNoShow(appointment.id); toast.success("No show"); }}>
+            <Button size="sm" variant="ghost" className="text-rose-500" onClick={act(() => markNoShow(appointment.id), "No show")}>
               <UserX className="h-4 w-4" /> No Show
             </Button>
           </>
         );
       case "checked_in":
         return (
-          <Button size="sm" className="gap-1" onClick={() => { startService(appointment.id); toast.success("Started"); }}>
+          <Button size="sm" className="gap-1" onClick={act(() => startService(appointment.id), "Started")}>
             <Play className="h-4 w-4" /> Start Service
           </Button>
         );
       case "in_service":
         return (
-          <Button size="sm" className="gap-1" onClick={() => { completeAppointment(appointment.id); toast.success("Completed"); }}>
+          <Button size="sm" className="gap-1" onClick={act(() => completeAppointment(appointment.id), "Completed")}>
             <Check className="h-4 w-4" /> Complete
           </Button>
         );
@@ -62,7 +68,7 @@ export function AppointmentActionCard({
 
   const ownerCancel =
     role === "owner" && !["completed", "cancelled", "rejected", "no_show"].includes(appointment.status) ? (
-      <Button size="sm" variant="ghost" className="text-rose-600" onClick={() => { cancelAppointment(appointment.id); toast.success("Cancelled"); }}>
+      <Button size="sm" variant="ghost" className="text-rose-600" onClick={act(() => cancelAppointment(appointment.id), "Cancelled")}>
         <X className="h-4 w-4" /> Cancel
       </Button>
     ) : null;

@@ -27,7 +27,7 @@ export default function RegisterPage() {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (!form.fullName.trim() || !form.phone.trim() || !form.email.trim() || !form.password) {
@@ -35,7 +35,7 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    const res = register(form);
+    const res = await register(form);
     setLoading(false);
     if (!res.ok) {
       setError(res.error ?? "Registration failed.");

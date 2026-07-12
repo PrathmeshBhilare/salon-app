@@ -68,15 +68,25 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
     return ids.map((id) => svcs.find((s) => s.id === id)?.name ?? "Service").join(", ");
   }
 
-  function addWalkIn() {
+  async function addWalkIn() {
     if (!walkName.trim()) return;
-    joinWalkIn(bid, walkName.trim(), []);
-    toast.success(`${walkName.trim()} added to the queue`);
+    try {
+      await joinWalkIn(bid, walkName.trim(), []);
+      toast.success("Added to the queue");
+    } catch {
+      toast.error("Could not add walk-in");
+    }
     setWalkName("");
     setWalkOpen(false);
   }
 
   const pill = "rounded-full px-3 py-1 text-xs font-medium";
+
+  const run = (fn: () => Promise<void>, msg: string) => () => {
+    fn()
+      .then(() => toast.success(msg))
+      .catch(() => toast.error("Action failed. Please try again."));
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,10 +135,7 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
             size="lg"
             className="mt-4 w-full gap-2 text-base"
             disabled={queueList.length === 0}
-            onClick={() => {
-              callNext(bid);
-              toast.success("Called next customer");
-            }}
+            onClick={run(() => callNext(bid), "Called next customer")}
           >
             <SkipForward className="h-5 w-5" /> Call Next
           </Button>
@@ -158,10 +165,7 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
                     size="sm"
                     variant="outline"
                     className="gap-1"
-                    onClick={() => {
-                      callNext(bid);
-                      toast.success(`Serving #${q.token}`);
-                    }}
+                    onClick={run(() => callNext(bid), `Serving #${q.token}`)}
                   >
                     <Check className="h-4 w-4" /> Serve
                   </Button>
@@ -180,10 +184,10 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
           >
             {pending.map((a) => (
               <Row key={a.id} name={a.customerName} sub={`${a.time} · ${serviceNames(a.serviceIds)}`}>
-                <Button size="sm" className="gap-1" onClick={() => { confirmAppointment(a.id); toast.success("Confirmed"); }}>
+                <Button size="sm" className="gap-1" onClick={run(() => confirmAppointment(a.id), "Confirmed")}>
                   <Check className="h-4 w-4" /> Confirm
                 </Button>
-                <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => { markNoShow(a.id); }}>
+                <Button size="sm" variant="ghost" className="text-rose-500" onClick={run(() => markNoShow(a.id), "Rejected")}>
                   Reject
                 </Button>
               </Row>
@@ -193,10 +197,10 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
           <QueueColumn title="Confirmed" count={confirmed.length} empty="No confirmed bookings.">
             {confirmed.map((a) => (
               <Row key={a.id} name={a.customerName} sub={`${a.time} · ${serviceNames(a.serviceIds)}`}>
-                <Button size="sm" className="gap-1" onClick={() => { checkInAppointment(a.id); toast.success("Checked in"); }}>
+                <Button size="sm" className="gap-1" onClick={run(() => checkInAppointment(a.id), "Checked in")}>
                   <UserCheck className="h-4 w-4" /> Check In
                 </Button>
-                <Button size="sm" variant="ghost" className="text-rose-500" onClick={() => markNoShow(a.id)}>
+                <Button size="sm" variant="ghost" className="text-rose-500" onClick={run(() => markNoShow(a.id), "No Show")}>
                   No Show
                 </Button>
               </Row>
@@ -206,7 +210,7 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
           <QueueColumn title="Checked In" count={checkedIn.length} empty="No checked-in customers.">
             {checkedIn.map((a) => (
               <Row key={a.id} name={a.customerName} sub={`Token #${a.token} · ${serviceNames(a.serviceIds)}`}>
-                <Button size="sm" className="gap-1" onClick={() => { startService(a.id); toast.success("Started"); }}>
+                <Button size="sm" className="gap-1" onClick={run(() => startService(a.id), "Started")}>
                   <MonitorDot className="h-4 w-4" /> Start
                 </Button>
               </Row>
@@ -216,7 +220,7 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
           <QueueColumn title="In Service" count={inService.length} empty="Nothing in service.">
             {inService.map((a) => (
               <Row key={a.id} name={a.customerName} sub={serviceNames(a.serviceIds)}>
-                <Button size="sm" className="gap-1" onClick={() => { completeAppointment(a.id); toast.success("Completed"); }}>
+                <Button size="sm" className="gap-1" onClick={run(() => completeAppointment(a.id), "Completed")}>
                   <Check className="h-4 w-4" /> Complete
                 </Button>
                 <a href={`tel:${a.customerPhone}`}>

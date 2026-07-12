@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Building2, Clock, LogOut, Moon, Sun } from "lucide-react";
 import { useData } from "@/lib/store";
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordDialog } from "@/components/password-dialog";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { settingsService } from "@/lib/services/settingsService";
 
 export default function OwnerSettings() {
   const { currentUser, logout, branches } = useData();
@@ -28,6 +29,32 @@ export default function OwnerSettings() {
   });
   const [prefs, setPrefs] = useState({ booking: true, offers: true, announcements: true });
   if (!currentUser) return null;
+
+  useEffect(() => {
+    settingsService.get().then((s) => {
+      setRules({
+        autoConfirm: s.autoConfirm,
+        allowWalkIn: s.allowWalkIn,
+        reminders: s.reminders,
+        weekendOnlyOffer: s.weekendOnlyOffer,
+      });
+      setPrefs({
+        booking: s.notifyBooking,
+        offers: s.notifyOffers,
+        announcements: s.notifyAnnouncements,
+      });
+    });
+  }, []);
+
+  const updateRule = (key: keyof typeof rules, v: boolean) => {
+    setRules((r) => ({ ...r, [key]: v }));
+    settingsService.save({ [key]: v } as never);
+  };
+  const updatePref = (key: keyof typeof prefs, v: boolean) => {
+    setPrefs((p) => ({ ...p, [key]: v }));
+    const map = { booking: "notifyBooking", offers: "notifyOffers", announcements: "notifyAnnouncements" } as const;
+    settingsService.save({ [map[key]]: v } as never);
+  };
 
   return (
     <div className="space-y-6">
@@ -122,7 +149,7 @@ export default function OwnerSettings() {
             </div>
             <Switch
               checked={rules[row.key as keyof typeof rules]}
-              onCheckedChange={(v) => setRules((r) => ({ ...r, [row.key]: v }))}
+              onCheckedChange={(v) => updateRule(row.key as keyof typeof rules, v)}
             />
           </div>
         ))}
@@ -144,7 +171,7 @@ export default function OwnerSettings() {
             <Label className="font-medium">{row.label}</Label>
             <Switch
               checked={prefs[row.key as keyof typeof prefs]}
-              onCheckedChange={(v) => setPrefs((p) => ({ ...p, [row.key]: v }))}
+              onCheckedChange={(v) => updatePref(row.key as keyof typeof prefs, v)}
             />
           </div>
         ))}
