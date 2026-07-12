@@ -85,7 +85,7 @@ export default function OwnerCustomers() {
         {customers.length === 0 ? (
           <EmptyState icon={Users} title="No customers found" description="Try a different search or filter." />
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-border">
+          <div className="overflow-x-auto rounded-2xl border border-border">
             <Table>
               <TableHeader>
                 <TableRow>

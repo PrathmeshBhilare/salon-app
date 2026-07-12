@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
       {!isMobile && (
-        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
           <div className="flex h-16 items-center gap-2 px-5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary font-display text-lg font-bold text-primary-foreground">
               G
@@ -102,16 +102,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur lg:hidden">
         <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} aria-label="Menu">
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-display text-base font-bold text-primary-foreground">
-          G
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary font-display text-base font-bold text-primary-foreground">
+            G
+          </div>
+          <span className="truncate font-display text-sm font-semibold">Glow &amp; Glamour</span>
         </div>
-        <span className="font-display text-sm font-semibold">Glow &amp; Glamour</span>
-        <div className="ml-auto flex items-center gap-1">
-          <BranchSwitcher className="h-9 border-none px-2 shadow-none" />
+        <div className="flex shrink-0 items-center gap-1">
+          <BranchSwitcher className="h-9 max-w-[40vw] border-none px-2 shadow-none" />
           <Link href={`/${role}/notifications`} aria-label="Notifications" className="relative rounded-full p-2">
             <Bell className="h-5 w-5" />
             {unread > 0 && (
@@ -123,7 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile drawer */}
       {isMobile && mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
           <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-sidebar shadow-xl">
             <div className="flex h-16 items-center justify-between px-5">
@@ -202,7 +204,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main */}
       <main
         className={cn(
-          "mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 md:pl-72 md:pr-6",
+          "mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-6 lg:pl-72 lg:pr-6",
           isMobile && "pb-24"
         )}
       >
@@ -211,7 +213,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Bottom nav (mobile) */}
       {isMobile && (
-        <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-background/95 backdrop-blur md:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-border bg-background/95 backdrop-blur lg:hidden">
           {items.slice(0, 5).map((item) => {
             const active = isActive(item.href);
             const Icon = item.icon;

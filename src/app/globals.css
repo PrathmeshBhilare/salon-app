@@ -117,9 +117,13 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    overflow-x: clip;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: "DM Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    overflow-x: clip;
   }
 }
 

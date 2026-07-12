@@ -80,7 +80,7 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-background/95 px-3 py-3 backdrop-blur sm:px-6">
+      <header className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-border bg-background/95 px-3 py-3 backdrop-blur sm:px-6">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary font-display text-lg font-bold text-primary-foreground">
           G
         </div>
@@ -94,8 +94,8 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
             · {status.waitingCount} waiting · ~{status.estimatedWaitMin}m
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <BranchSwitcher className="h-9" />
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <BranchSwitcher className="h-9 max-w-[42vw]" />
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setWalkOpen(true)}>
             <Plus className="h-4 w-4" /> Walk-in
           </Button>
