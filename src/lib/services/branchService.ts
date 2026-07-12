@@ -4,6 +4,7 @@ import {
   getDoc,
   onSnapshot,
   runTransaction,
+  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";

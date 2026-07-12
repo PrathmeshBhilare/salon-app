@@ -28,7 +28,7 @@ export function PasswordDialog({
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
 
-  function submit() {
+  async function submit() {
     setError("");
     if (next.length < 6) {
       setError("New password must be at least 6 characters.");
@@ -38,7 +38,7 @@ export function PasswordDialog({
       setError("New passwords do not match.");
       return;
     }
-    const res = updatePassword(current, next);
+    const res = await updatePassword(current, next);
     if (!res.ok) {
       setError(res.error ?? "Could not change password.");
       return;

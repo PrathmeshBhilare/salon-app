@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function userRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /profile-photos/{file} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+
+    match /gallery/{file} {
+      allow read: if signedIn();
+      allow write: if signedIn() && userRole() == 'owner';
+    }
+
+    match /offers/{file} {
+      allow read: if signedIn();
+      allow write: if signedIn() && userRole() == 'owner';
+    }
+
+    match /services/{file} {
+      allow read: if signedIn();
+      allow write: if signedIn() && userRole() == 'owner';
+    }
+  }
+}

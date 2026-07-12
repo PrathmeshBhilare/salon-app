@@ -14,7 +14,7 @@ import type { BranchId, Role, User } from "@/lib/types";
 import { generateUserId } from "@/lib/format";
 
 function toUser(id: string, data: Record<string, unknown>): User {
-  return { id, ...(data as Omit<User, "id">) };
+  return { id: (data.userId as string) ?? id, ...(data as Omit<User, "id">) };
 }
 
 export const userService = {
@@ -39,7 +39,8 @@ export const userService = {
     const db = getDb();
     const userId = await this.generateUniqueUserId();
     const now = new Date().toISOString();
-    await setDoc(doc(db, "users", userId), {
+    // Document ID = Firebase Auth UID so rules can verify role via get(/users/$(uid)).
+    await setDoc(doc(db, "users", input.uid), {
       uid: input.uid,
       userId,
       fullName: input.fullName,
@@ -58,24 +59,28 @@ export const userService = {
 
   async getUserByUid(uid: string): Promise<User | null> {
     const db = getDb();
-    const snap = await getDocs(query(collection(db, "users"), where("uid", "==", uid)));
+    const d = await getDoc(doc(db, "users", uid));
+    return d.exists() ? toUser(d.id, d.data() as Record<string, unknown>) : null;
+  },
+
+  async get(userId: string): Promise<User | null> {
+    const db = getDb();
+    const snap = await getDocs(query(collection(db, "users"), where("userId", "==", userId)));
     if (snap.empty) return null;
     const d = snap.docs[0];
     return toUser(d.id, d.data() as Record<string, unknown>);
   },
 
-  async get(userId: string): Promise<User | null> {
-    const db = getDb();
-    const d = await getDoc(doc(db, "users", userId));
-    return d.exists() ? toUser(d.id, d.data() as Record<string, unknown>) : null;
-  },
-
   async updateUser(userId: string, patch: Partial<User>) {
     const db = getDb();
-    await updateDoc(doc(db, "users", userId), {
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    });
+    const ref = await this.refFor(userId);
+    if (ref) await updateDoc(ref, { ...patch, updatedAt: new Date().toISOString() });
+  },
+
+  async refFor(userId: string) {
+    const db = getDb();
+    const snap = await getDocs(query(collection(db, "users"), where("userId", "==", userId)));
+    return snap.empty ? null : doc(db, "users", snap.docs[0].id);
   },
 
   async listUsers(): Promise<User[]> {
@@ -95,8 +100,9 @@ export const userService = {
     userId: string,
     data: { branch: BranchId; position: string; services: string[] }
   ) {
-    const db = getDb();
-    await updateDoc(doc(db, "users", userId), {
+    const ref = await this.refFor(userId);
+    if (!ref) throw new Error("User not found");
+    await updateDoc(ref, {
       role: "staff",
       staffBranch: data.branch,
       staffPosition: data.position,
@@ -107,10 +113,10 @@ export const userService = {
   },
 
   async toggleStaffActive(userId: string) {
-    const db = getDb();
-    const d = await getDoc(doc(db, "users", userId));
-    if (!d.exists()) return;
-    const active = !(d.data().active as boolean);
-    await updateDoc(doc(db, "users", userId), { active, updatedAt: new Date().toISOString() });
+    const ref = await this.refFor(userId);
+    if (!ref) return;
+    const d = await getDoc(ref);
+    const active = !(d.data()?.active as boolean);
+    await updateDoc(ref, { active, updatedAt: new Date().toISOString() });
   },
 };

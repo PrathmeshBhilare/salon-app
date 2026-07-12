@@ -67,9 +67,9 @@ export function ConvertStaffDialog({
     setPicked((p) => (p.includes(sid) ? p.filter((x) => x !== sid) : [...p, sid]));
   }
 
-  function activate() {
+  async function activate() {
     if (!found) return;
-    const res = convertToStaff(found.id, { branch, position, services: picked });
+    const res = await convertToStaff(found.id, { branch, position, services: picked });
     if (!res.ok) {
       setError(res.error ?? "Could not convert.");
       return;

@@ -413,7 +413,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     async (branchId: BranchId) => {
       const q = queue[branchId] ?? [];
       if (q.length === 0) return;
-      await startService(q[0].appointmentId, currentUser?.id);
+      const id = q[0].appointmentId;
+      if (!id) return;
+      await startService(id, currentUser?.id);
     },
     [queue, startService, currentUser]
   );
