@@ -103,7 +103,8 @@ export function AppointmentActionCard({
             <div className="flex w-full flex-wrap items-center gap-2">
               {actions}
               {ownerCancel}
-              <a href={`tel:${appointment.customerPhone}`} className="ml-auto">
+              <div className="flex-1" />
+              <a href={`tel:${appointment.customerPhone}`} className="shrink-0">
                 <Button size="sm" variant="outline" className="gap-1">
                   <Phone className="h-4 w-4" /> Call
                 </Button>

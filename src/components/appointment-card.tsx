@@ -99,7 +99,7 @@ export function AppointmentCard({
         </span>
       </div>
 
-      {action && <div className="flex items-center gap-2 pt-2">{action}</div>}
+      {action && <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border/40">{action}</div>}
     </Card>
   );
 }

@@ -89,32 +89,37 @@ export default function OwnerDashboard() {
 
 function LiveStrip({ status, activeBranchId }: { status: ShopStatus; activeBranchId: BranchId }) {
   return (
-    <div className="grid grid-cols-3 gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground">Now Serving</p>
+    <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="flex w-full items-center justify-between sm:w-auto sm:flex-col sm:justify-center">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Now Serving</p>
         <p className="font-display text-2xl font-bold text-primary">{status.nowServingToken ? `#${status.nowServingToken}` : "—"}</p>
       </div>
-      <div className="flex items-center justify-between text-center mt-2 px-2">
+
+      <div className="flex flex-1 items-center justify-center gap-4 py-2 sm:py-0">
         <button 
           onClick={() => branchService.incrementStats(activeBranchId, { waiting: -1 })}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 hover:bg-rose-200 active:scale-95 dark:bg-rose-900/30 dark:hover:bg-rose-900/50"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600 shadow-sm transition-all hover:bg-rose-200 active:scale-95 dark:bg-rose-900/30 dark:hover:bg-rose-900/50"
         >
-          <span className="text-xl font-bold">-1</span>
+          <span className="text-2xl font-bold leading-none">-</span>
         </button>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Waiting</p>
-          <p className="font-display text-4xl font-bold">{status.waitingCount}</p>
+        <div className="text-center min-w-[80px]">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Waiting</p>
+          <p className="font-display text-5xl font-black leading-none tracking-tight">{status.waitingCount}</p>
         </div>
         <button 
           onClick={() => branchService.incrementStats(activeBranchId, { waiting: 1 })}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 active:scale-95 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-sm transition-all hover:bg-emerald-200 active:scale-95 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50"
         >
-          <span className="text-xl font-bold">+1</span>
+          <span className="text-2xl font-bold leading-none">+</span>
         </button>
       </div>
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground">Est. Wait</p>
-        <p className="font-display text-2xl font-bold">{status.estimatedWaitMin}m</p>
+
+      <div className="flex w-full items-center justify-between sm:w-auto sm:flex-col sm:justify-center">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Est. Wait</p>
+        <div className="flex items-baseline gap-1">
+          <p className="font-display text-2xl font-bold">{status.estimatedWaitMin}</p>
+          <span className="text-xs font-medium text-muted-foreground">m</span>
+        </div>
       </div>
     </div>
   );
