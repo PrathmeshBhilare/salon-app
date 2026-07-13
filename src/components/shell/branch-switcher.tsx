@@ -19,9 +19,9 @@ export function BranchSwitcher({
   className?: string;
   align?: "start" | "center" | "end";
 }) {
-  const { branches, activeBranchId, setActiveBranch } = useData();
+  const { branches, activeBranchId, setActiveBranch, getBranch } = useData();
   const [open, setOpen] = useState(false);
-  const current = branches.find((b) => b.id === activeBranchId) ?? branches[0];
+  const current = getBranch(activeBranchId);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

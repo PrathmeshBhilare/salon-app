@@ -218,7 +218,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       cleanup();
       if (!fbUser) {
         setCurrentUser(null);
-        setBranches([]);
+        setBranches(DEFAULT_BRANCHES);
         setServices([]);
         setOffers([]);
         setAppointments([]);
