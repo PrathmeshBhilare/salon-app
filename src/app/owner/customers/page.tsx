@@ -114,8 +114,8 @@ export default function OwnerCustomers() {
                     </TableCell>
                     <TableCell className="hidden text-right sm:table-cell">{apptCount(c.id)}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" className="gap-1" onClick={() => setConvertFor(c.id)}>
-                        <UserCog className="h-4 w-4" /> Make Staff
+                      <Button size="sm" variant="outline" className="gap-1 px-2 sm:px-3" onClick={() => setConvertFor(c.id)}>
+                        <UserCog className="h-4 w-4" /> <span className="hidden sm:inline">Make Staff</span>
                       </Button>
                     </TableCell>
                   </TableRow>

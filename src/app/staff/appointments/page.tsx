@@ -10,9 +10,11 @@ import { AppointmentActionCard } from "@/components/staff/appointment-actions";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
+import { Input } from "@/components/ui/input";
+import { todayISO } from "@/lib/format";
+
 const FILTERS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "checked_in", label: "Checked In" },
   { value: "in_service", label: "In Service" },
@@ -23,11 +25,13 @@ const FILTERS: { value: string; label: string }[] = [
 export default function StaffAppointments() {
   const { currentUser, activeBranchId, appointments } = useData();
   const [tab, setTab] = useState("all");
+  const [filterDate, setFilterDate] = useState<string>(todayISO());
   if (!currentUser) return null;
 
   const list = useMemo(() => {
     return appointments
       .filter((a) => a.branchId === activeBranchId)
+      .filter((a) => (filterDate ? a.date === filterDate : true))
       .filter((a) => {
         if (tab === "all") return true;
         if (tab === "completed") return a.status === "completed";
@@ -35,8 +39,8 @@ export default function StaffAppointments() {
           return ["cancelled", "rejected", "no_show"].includes(a.status);
         return a.status === (tab as AppointmentStatus);
       })
-      .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-  }, [appointments, activeBranchId, tab]);
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+  }, [appointments, activeBranchId, tab, filterDate]);
 
   return (
     <div className="space-y-6">
@@ -45,15 +49,25 @@ export default function StaffAppointments() {
         subtitle={`All appointments at ${BRANCH_LABELS[activeBranchId]}`}
         action={<div className="hidden sm:block"><BranchSwitcher /></div>}
       />
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex w-full flex-wrap justify-start gap-1">
-          {FILTERS.map((f) => (
-            <TabsTrigger key={f.value} value={f.value} className="text-xs">
-              {f.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <Tabs value={tab} onValueChange={setTab} className="flex-1">
+          <TabsList className="flex h-auto min-h-[36px] w-full flex-wrap justify-start gap-1 py-1">
+            {FILTERS.map((f) => (
+              <TabsTrigger key={f.value} value={f.value} className="text-xs">
+                {f.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <Input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="w-full sm:w-40 h-10"
+          />
+        </div>
+      </div>
 
       <Section>
         {list.length === 0 ? (

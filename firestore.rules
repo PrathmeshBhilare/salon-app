@@ -57,7 +57,8 @@ service cloud.firestore {
         request.resource.data.customerUid == request.auth.uid || isOwner() || isStaff()
       );
       allow update, delete: if signedIn() && (
-        isOwner() || (isStaff() && resource.data.branchId == staffBranch())
+        isOwner() || (isStaff() && resource.data.branchId == staffBranch()) ||
+        resource.data.customerUid == request.auth.uid
       );
     }
 

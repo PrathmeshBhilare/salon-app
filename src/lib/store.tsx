@@ -256,9 +256,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setReady(true);
           return;
         }
-        // Auto-promote the designated owner email
-        const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL;
-        if (ownerEmail && user.email.toLowerCase() === ownerEmail.toLowerCase() && user.role !== "owner") {
+        // Auto-promote the designated owner emails
+        const ownerEmailsStr = process.env.NEXT_PUBLIC_OWNER_EMAILS || process.env.NEXT_PUBLIC_OWNER_EMAIL || "";
+        const ownerEmails = ownerEmailsStr.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+        const isOwnerEmail = user.email && ownerEmails.includes(user.email.toLowerCase());
+
+        if (isOwnerEmail && user.role !== "owner") {
           await userService.updateUser(user.id, { role: "owner", ownerBranch: "lhasurane" as BranchId });
           user.role = "owner";
           user.ownerBranch = "lhasurane";
@@ -360,6 +363,27 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const bookAppointment = useCallback<DataContextValue["bookAppointment"]>(
     async (input) => {
+      if (currentUser?.role === "customer") {
+        if (currentUser.blockedUntil && new Date(currentUser.blockedUntil) > new Date()) {
+          throw new Error("You are temporarily blocked from booking appointments.");
+        }
+        
+        const customerAppts = appointments.filter(a => a.customerUid === currentUser.uid);
+        
+        const activeCount = customerAppts.filter(a => a.status === "pending" || a.status === "confirmed").length;
+        if (activeCount >= 2) {
+          throw new Error("You cannot have more than 2 active bookings at a time.");
+        }
+        
+        if (customerAppts.length > 0) {
+          const newest = customerAppts.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))[0];
+          const diffMins = (Date.now() - new Date(newest.createdAt).getTime()) / 60000;
+          if (diffMins < 5) {
+            throw new Error("Please wait a few minutes before booking another appointment.");
+          }
+        }
+      }
+
       const now = new Date().toISOString();
       const appt: Appointment = {
         reference: Math.random().toString(36).substring(2, 8).toUpperCase(),
@@ -371,7 +395,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         serviceIds: input.serviceIds,
         date: input.date,
         time: input.time,
-        status: "pending",
+        status: "confirmed",
         isWalkIn: false,
         token: null,
         createdAt: now,
@@ -383,8 +407,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       await notificationService.create({
         recipientId: input.customerId,
         recipientUid: currentUser?.uid || input.customerId,
-        title: "Booking Received",
-        message: `Your appointment at ${branchLabel(input.branchId)} is pending confirmation.`,
+        title: "Booking Confirmed",
+        message: `Your appointment at ${branchLabel(input.branchId)} is confirmed!`,
         kind: "booking",
       });
       await notificationService.create({
@@ -402,7 +426,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       });
       return appt;
     },
-    [currentUser]
+    [currentUser, appointments]
   );
 
   const confirmAppointment = useCallback(async (id: string) => {
@@ -463,6 +487,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const isWaiting = a.status === "checked_in";
     await appointmentService.update(id, {
       status: "in_service",
+      serviceStartedAt: new Date().toISOString(),
       assignedStaffId: staffId ?? currentUser?.id,
     });
     if (a.token != null) await branchService.setNowServing(a.branchId, a.token);
@@ -503,6 +528,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!a || a.status === "cancelled") return;
     const wasInService = a.status === "in_service";
     const wasWaiting = a.status === "checked_in";
+
+    if (currentUser?.role === "customer" && a.customerUid === currentUser.uid) {
+      const strikes = (currentUser.cancelStrikes || 0) + 1;
+      const patch: any = { cancelStrikes: strikes };
+      if (strikes >= 3) {
+        patch.blockedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        patch.cancelStrikes = 0;
+      }
+      await userService.updateUserByUid(currentUser.uid, patch);
+    }
+
     await appointmentService.update(id, { status: "cancelled", token: null });
     await notificationService.create({
       recipientId: a.customerId,
@@ -517,7 +553,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       inService: wasInService ? -1 : 0,
       waiting: wasWaiting ? -1 : 0
     });
-  }, [appointments, serving]);
+  }, [appointments, serving, currentUser]);
 
   const joinWalkIn = useCallback<DataContextValue["joinWalkIn"]>(
     async (branchId, customerName, serviceIds) => {
@@ -732,6 +768,31 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     },
     [branches, serving]
   );
+
+  // Auto-complete appointments that have exceeded their duration
+  useEffect(() => {
+    if (!ready) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      appointments.forEach((a) => {
+        if (a.status === "in_service" && a.serviceStartedAt) {
+          const totalDurationMin = a.serviceIds.reduce((sum, sId) => {
+            const s = services.find((x) => x.id === sId);
+            return sum + (s?.durationMin || 30);
+          }, 0);
+          
+          const startedTime = new Date(a.serviceStartedAt).getTime();
+          const endTime = startedTime + (totalDurationMin * 60 * 1000);
+          
+          if (now >= endTime) {
+            completeAppointment(a.id).catch(console.error);
+          }
+        }
+      });
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [ready, appointments, services, completeAppointment]);
 
   const value = useMemo<DataContextValue>(
     () => ({

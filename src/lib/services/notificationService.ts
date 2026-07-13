@@ -49,6 +49,31 @@ export const notificationService = {
     });
 
     await addDoc(collection(db, "notifications"), docData);
+
+    try {
+      let q;
+      if (input.recipientUid) {
+        q = query(collection(db, "notifications"), where("recipientUid", "==", input.recipientUid));
+      } else if (input.audience) {
+        q = query(collection(db, "notifications"), where("audience", "==", input.audience));
+      }
+      
+      if (q) {
+        const snap = await getDocs(q);
+        if (snap.docs.length > 30) {
+          const sorted = snap.docs.sort((a, b) => {
+            const dateA = a.data().createdAt || "";
+            const dateB = b.data().createdAt || "";
+            return dateB.localeCompare(dateA); // Newest first
+          });
+          const toDelete = sorted.slice(30);
+          const { deleteDoc } = await import("firebase/firestore");
+          await Promise.all(toDelete.map((d) => deleteDoc(d.ref)));
+        }
+      }
+    } catch (e) {
+      console.warn("Could not prune notifications", e);
+    }
   },
 
   async markRead(id: string) {

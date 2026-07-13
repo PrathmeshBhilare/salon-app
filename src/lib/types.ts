@@ -54,6 +54,9 @@ export interface User {
   active?: boolean;
   // owner extras
   ownerBranch?: BranchId;
+  // rate limiting
+  cancelStrikes?: number;
+  blockedUntil?: string;
 }
 
 export interface Service {
@@ -108,6 +111,7 @@ export interface Appointment {
   queuedAt?: string;
   confirmedBy?: string;
   confirmedAt?: string;
+  serviceStartedAt?: string;
   completedAt?: string;
 }
 

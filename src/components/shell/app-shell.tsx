@@ -105,17 +105,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur lg:hidden">
-        <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} aria-label="Menu">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setMobileOpen(true)} aria-label="Menu">
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary font-display text-base font-bold text-primary-foreground">
             G
           </div>
-          <span className="truncate font-display text-sm font-semibold">Glow &amp; Glamour</span>
+          <span className="truncate font-display text-[13px] font-semibold sm:text-sm">Glow & Glamour</span>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <BranchSwitcher className="h-9 max-w-[40vw] border-none px-2 shadow-none" />
+        <div className="flex shrink-0 items-center">
+          <BranchSwitcher className="h-9 w-[110px] sm:w-auto sm:max-w-[40vw] border-none px-1 shadow-none text-[13px]" />
           <Link href={`/${role}/notifications`} aria-label="Notifications" className="relative rounded-full p-2">
             <Bell className="h-5 w-5" />
             {unread > 0 && (

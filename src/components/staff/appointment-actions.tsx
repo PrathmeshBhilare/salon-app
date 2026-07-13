@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Appointment, Role } from "@/lib/types";
 
+import { todayISO } from "@/lib/format";
+
 export function AppointmentActionCard({
   appointment,
   role,
@@ -26,6 +28,9 @@ export function AppointmentActionCard({
       });
   };
 
+  const todayStr = todayISO();
+  const isFuture = appointment.date > todayStr;
+
   const actions = (() => {
     switch (appointment.status) {
       case "pending":
@@ -42,6 +47,13 @@ export function AppointmentActionCard({
           </>
         );
       case "confirmed":
+        if (isFuture) {
+          return (
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              Cannot start future appointment
+            </span>
+          );
+        }
         return (
           <>
             <Button size="sm" className="gap-1" onClick={act(() => checkInAppointment(appointment.id), "Checked in")}>
@@ -53,6 +65,13 @@ export function AppointmentActionCard({
           </>
         );
       case "checked_in":
+        if (isFuture) {
+          return (
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              Cannot start future appointment
+            </span>
+          );
+        }
         return (
           <Button size="sm" className="gap-1" onClick={act(() => startService(appointment.id), "Started")}>
             <Play className="h-4 w-4" /> Start Service

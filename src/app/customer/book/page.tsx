@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { formatPrice, formatTime, addDaysISO } from "@/lib/format";
+import { formatPrice, formatTime, addDaysISO, todayISO } from "@/lib/format";
 import { toast } from "sonner";
 
 const STEP_LABELS = ["Branch", "Service", "Date", "Time", "Review"];
@@ -60,8 +60,14 @@ export default function BookPage() {
     const [ch, cm] = wh.close.split(":").map(Number);
     const start = oh * 60 + om;
     const end = ch * 60 + cm;
+
+    const isToday = date === todayISO();
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
     const out: string[] = [];
     for (let m = start; m + 30 <= end; m += 30) {
+      if (isToday && m <= currentMins) continue;
       const hh = Math.floor(m / 60);
       const mm = m % 60;
       out.push(`${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}`);

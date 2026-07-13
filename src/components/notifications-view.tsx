@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { Bell, CalendarCheck, Info, Megaphone, Ticket, X, CheckCheck, Trash2 } from "lucide-react";
 import { useData } from "@/lib/store";
 import { useTranslation } from "@/lib/i18n";
@@ -22,9 +23,28 @@ const ICONS = {
 export function NotificationsView() {
   const { currentUser, notificationsFor, unreadCount, markNotificationRead, markAllNotificationsRead, clearAllNotifications, deleteNotification } = useData();
   const { t } = useTranslation();
+  const [visibleCount, setVisibleCount] = useState(10);
+  const observerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = observerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 10);
+        }
+      },
+      { threshold: 1.0 }
+    );
+    observer.observe(el);
+    return () => observer.unobserve(el);
+  }, []);
+
   if (!currentUser) return null;
   const list = notificationsFor(currentUser);
   const unread = unreadCount(currentUser);
+  const visibleList = list.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
@@ -50,7 +70,7 @@ export function NotificationsView() {
         <EmptyState icon={Bell} title={t("notifications.empty")} description={t("notifications.empty_desc")} />
       ) : (
         <div className="space-y-2">
-          {list.map((n) => (
+          {visibleList.map((n) => (
             <NotificationRow 
               key={n.id} 
               n={n} 
@@ -58,6 +78,11 @@ export function NotificationsView() {
               onDelete={() => deleteNotification(n.id)} 
             />
           ))}
+          {visibleCount < list.length && (
+            <div ref={observerRef} className="h-10 flex items-center justify-center text-sm text-muted-foreground">
+              Loading more...
+            </div>
+          )}
         </div>
       )}
     </div>

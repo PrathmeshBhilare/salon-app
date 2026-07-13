@@ -28,7 +28,6 @@ import type { AppointmentStatus } from "@/lib/types";
 
 const FILTERS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "cancelled", label: "Cancelled" },
 ];

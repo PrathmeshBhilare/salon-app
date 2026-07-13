@@ -2,19 +2,21 @@
 
 import { Activity, CheckCircle2, Clock, UserCheck, Users, UserPlus } from "lucide-react";
 import { useData } from "@/lib/store";
-import { BRANCH_LABELS, type ShopStatus } from "@/lib/types";
+import { BRANCH_LABELS, type ShopStatus, type BranchId } from "@/lib/types";
 import { PageHeader, StatCard, Section, EmptyState } from "@/components/ui-kit";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { AppointmentActionCard } from "@/components/staff/appointment-actions";
 import { formatTime, relativeTime } from "@/lib/format";
 import { StatusBadge } from "@/components/ui-kit";
+import { branchService } from "@/lib/services/branchService";
+import { todayISO } from "@/lib/format";
 
 export default function OwnerDashboard() {
   const { currentUser, activeBranchId, getShopStatus, appointments, notifications } = useData();
   if (!currentUser) return null;
 
   const status = getShopStatus(activeBranchId);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const todays = appointments.filter((a) => a.branchId === activeBranchId && a.date === today);
   const pending = appointments.filter((a) => a.branchId === activeBranchId && a.status === "pending").length;
   const confirmed = todays.filter((a) => a.status === "confirmed").length;
@@ -51,7 +53,7 @@ export default function OwnerDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Section title="Live Queue Floor">
-          <LiveStrip status={status} />
+          <LiveStrip status={status} activeBranchId={activeBranchId} />
           <div className="mt-3 grid gap-3">
             {recent.length === 0 ? (
               <EmptyState icon={Activity} title="No activity today" />
@@ -85,16 +87,30 @@ export default function OwnerDashboard() {
   );
 }
 
-function LiveStrip({ status }: { status: ShopStatus }) {
+function LiveStrip({ status, activeBranchId }: { status: ShopStatus; activeBranchId: BranchId }) {
   return (
     <div className="grid grid-cols-3 gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="text-center">
         <p className="text-xs text-muted-foreground">Now Serving</p>
         <p className="font-display text-2xl font-bold text-primary">{status.nowServingToken ? `#${status.nowServingToken}` : "—"}</p>
       </div>
-      <div className="text-center">
-        <p className="text-xs text-muted-foreground">Waiting</p>
-        <p className="font-display text-2xl font-bold">{status.waitingCount}</p>
+      <div className="flex items-center justify-between text-center mt-2 px-2">
+        <button 
+          onClick={() => branchService.incrementStats(activeBranchId, { waiting: -1 })}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-rose-600 hover:bg-rose-200 active:scale-95 dark:bg-rose-900/30 dark:hover:bg-rose-900/50"
+        >
+          <span className="text-xl font-bold">-1</span>
+        </button>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Waiting</p>
+          <p className="font-display text-4xl font-bold">{status.waitingCount}</p>
+        </div>
+        <button 
+          onClick={() => branchService.incrementStats(activeBranchId, { waiting: 1 })}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 active:scale-95 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50"
+        >
+          <span className="text-xl font-bold">+1</span>
+        </button>
       </div>
       <div className="text-center">
         <p className="text-xs text-muted-foreground">Est. Wait</p>
