@@ -117,6 +117,7 @@ interface DataContextValue {
     preferredBranch: BranchId;
   }) => Promise<{ ok: boolean; error?: string; user?: User }>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ ok: boolean; error?: string }>;
   updatePassword: (current: string, next: string) => Promise<{ ok: boolean; error?: string }>;
   setActiveBranch: (id: BranchId) => void;
   bookAppointment: (input: {
@@ -336,6 +337,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     cleanup();
     await authService.logout();
   }, [cleanup]);
+
+  const resetPassword = useCallback(async (email: string) => {
+    try {
+      await authService.resetPassword(email.trim());
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: friendlyAuthError(e) };
+    }
+  }, []);
 
   const updatePassword = useCallback(async (current: string, next: string) => {
     try {
@@ -739,6 +749,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       login,
       register,
       logout,
+      resetPassword,
       updatePassword,
       setActiveBranch,
       bookAppointment,
@@ -777,7 +788,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       ready, users, branches, services, offers, appointments, queue, notifications, serving,
-      currentUser, activeBranchId, login, register, logout, updatePassword, setActiveBranch,
+      currentUser, activeBranchId, login, register, logout, resetPassword, updatePassword, setActiveBranch,
       bookAppointment, confirmAppointment, rejectAppointment, checkInAppointment, startService,
       completeAppointment, markNoShow, cancelAppointment, joinWalkIn, callNext, leaveQueue,
       convertToStaff, toggleStaffActive, addService, updateService, deleteService, toggleService,
