@@ -16,39 +16,103 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { formatTime } from "@/lib/format";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { AppointmentStatus } from "@/lib/types";
+
+const FILTERS: { value: string; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "cancelled", label: "Cancelled" },
+];
 
 export default function CustomerBookings() {
   const { currentUser, appointments, cancelAppointment } = useData();
   const { t } = useTranslation();
   const [toCancel, setToCancel] = useState<string | null>(null);
+  const [tab, setTab] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
 
   if (!currentUser) return null;
-  const mine = appointments
+  
+  const list = appointments
     .filter((a) => a.customerId === currentUser.id)
-    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    .filter((a) => {
+      if (tab === "all") return true;
+      if (tab === "cancelled") return ["cancelled", "rejected", "no_show"].includes(a.status);
+      return a.status === (tab as AppointmentStatus);
+    })
+    .sort((a, b) => {
+      if (sortBy === "time") {
+        return (a.date + a.time).localeCompare(b.date + b.time);
+      } else {
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      }
+    });
 
-  const upcoming = mine.filter((a) => !["completed", "cancelled", "rejected", "no_show"].includes(a.status));
-  const past = mine.filter((a) => ["completed", "cancelled", "rejected", "no_show"].includes(a.status));
-
-  const target = mine.find((a) => a.id === toCancel);
+  const target = appointments.find((a) => a.id === toCancel);
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("nav.bookings")} subtitle={t("notifications.subtitle")} />
+      <PageHeader 
+        title={t("nav.bookings")} 
+        subtitle={t("bookings.subtitle")} 
+        action={
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[140px] bg-background">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newly Booked</SelectItem>
+              <SelectItem value="time">By Time</SelectItem>
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <Section title={`${t("dashboard.upcoming")} (${upcoming.length})`}>
-        {upcoming.length === 0 ? (
-          <EmptyState icon={CalendarCheck} title={t("dashboard.no_upcoming")} description={t("dashboard.book_visit")} />
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="flex w-full flex-wrap justify-start gap-1">
+          {FILTERS.map((f) => (
+            <TabsTrigger key={f.value} value={f.value} className="text-xs">
+              {f.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      <Section>
+        {list.length === 0 ? (
+          <EmptyState icon={CalendarCheck} title="No bookings found" description="Try changing the filters." />
         ) : (
           <div className="grid gap-3">
-            {upcoming.map((a) => (
+            {list.map((a) => (
               <AppointmentCard
                 key={a.id}
                 appointment={a}
                 action={
                   (a.status === "pending" || a.status === "confirmed") && (
-                    <Button variant="outline" size="sm" className="gap-1 text-rose-600" onClick={() => setToCancel(a.id)}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-1 text-rose-600" 
+                      onClick={() => {
+                        if (a.status === "confirmed") {
+                          toast("Cannot cancel", {
+                            description: "Your appointment is confirmed. Please contact the salon for any queries.",
+                            action: { label: "Dismiss", onClick: () => {} },
+                          });
+                        } else {
+                          setToCancel(a.id);
+                        }
+                      }}
+                    >
                       <X className="h-4 w-4" /> {t("bookings.cancel")}
                     </Button>
                   )
@@ -58,16 +122,6 @@ export default function CustomerBookings() {
           </div>
         )}
       </Section>
-
-      {past.length > 0 && (
-        <Section title={`${t("bookings.history")} (${past.length})`}>
-          <div className="grid gap-3">
-            {past.map((a) => (
-              <AppointmentCard key={a.id} appointment={a} />
-            ))}
-          </div>
-        </Section>
-      )}
 
       <Dialog open={!!toCancel} onOpenChange={(o) => !o && setToCancel(null)}>
         <DialogContent>

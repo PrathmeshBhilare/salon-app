@@ -6,11 +6,12 @@ import {
   runTransaction,
   setDoc,
   updateDoc,
+  increment,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import type { Branch, BranchId } from "@/lib/types";
 
-const BRANCH_SEED: Record<BranchId, Omit<Branch, "nextToken" | "nowServing">> = {
+const BRANCH_SEED: Record<BranchId, Omit<Branch, "nextToken" | "nowServing" | "waitingCount" | "inServiceCount" | "checkedInCount">> = {
   lhasurane: {
     id: "lhasurane",
     name: "Lhasurane",
@@ -70,9 +71,10 @@ export const branchService = {
       const ref = doc(db, "branches", id);
       const snap = await getDoc(ref);
       if (!snap.exists()) {
-        await updateDoc(ref, { ...BRANCH_SEED[id], nextToken: 0, nowServing: null }).catch(
+        const defaults = { nextToken: 0, nowServing: null, waitingCount: 0, inServiceCount: 0, checkedInCount: 0 };
+        await updateDoc(ref, { ...BRANCH_SEED[id], ...defaults }).catch(
           async () => {
-            await setDoc(ref, { ...BRANCH_SEED[id], nextToken: 0, nowServing: null });
+            await setDoc(ref, { ...BRANCH_SEED[id], ...defaults });
           }
         );
       }
@@ -106,5 +108,19 @@ export const branchService = {
   async setNowServing(id: BranchId, token: number | null) {
     const db = getDb();
     await updateDoc(doc(db, "branches", id), { nowServing: token });
+  },
+
+  async incrementStats(id: BranchId, stats: { waiting?: number; inService?: number; checkedIn?: number }) {
+    const db = getDb();
+    const patch: Record<string, any> = {};
+    if (stats.waiting) patch.waitingCount = increment(stats.waiting);
+    if (stats.inService) patch.inServiceCount = increment(stats.inService);
+    if (stats.checkedIn) patch.checkedInCount = increment(stats.checkedIn);
+    
+    if (Object.keys(patch).length > 0) {
+      await updateDoc(doc(db, "branches", id), patch).catch(e => {
+        console.error("Failed to increment branch stats:", e);
+      });
+    }
   },
 };

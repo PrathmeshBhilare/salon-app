@@ -16,6 +16,16 @@ function toNotification(id: string, data: Record<string, unknown>): AppNotificat
 }
 
 export const notificationService = {
+  async deleteMultiple(ids: string[]) {
+    const db = getDb();
+    const { deleteDoc } = await import("firebase/firestore");
+    await Promise.all(ids.map((id) => deleteDoc(doc(db, "notifications", id))));
+  },
+  async delete(id: string) {
+    const db = getDb();
+    const { deleteDoc } = await import("firebase/firestore");
+    await deleteDoc(doc(db, "notifications", id));
+  },
   async create(input: {
     recipientId?: string;
     recipientUid?: string;

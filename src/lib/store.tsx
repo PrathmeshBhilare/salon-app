@@ -53,6 +53,9 @@ export const DEFAULT_BRANCHES: Branch[] = [
     totalChairs: 4,
     nextToken: 0,
     nowServing: null,
+    waitingCount: 0,
+    inServiceCount: 0,
+    checkedInCount: 0,
     workingHours: [
       { day: "Mon", open: "09:00", close: "20:00" },
       { day: "Tue", open: "09:00", close: "20:00" },
@@ -78,6 +81,9 @@ export const DEFAULT_BRANCHES: Branch[] = [
     totalChairs: 6,
     nextToken: 0,
     nowServing: null,
+    waitingCount: 0,
+    inServiceCount: 0,
+    checkedInCount: 0,
     workingHours: [
       { day: "Mon", open: "09:30", close: "21:00" },
       { day: "Tue", open: "09:30", close: "21:00" },
@@ -149,6 +155,8 @@ interface DataContextValue {
   notify: (input: Partial<AppNotification> & { title: string; message: string; kind: AppNotification["kind"] }) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
   notificationsFor: (user: User) => AppNotification[];
   unreadCount: (user: User) => number;
   getBranch: (id: BranchId) => Branch;
@@ -168,6 +176,7 @@ function deriveQueue(appointments: Appointment[]): Record<string, QueueEntry[]> 
         token: a.token,
         appointmentId: a.id,
         customerName: a.customerName,
+        customerUid: a.customerUid,
         branchId: a.branchId,
         isWalkIn: a.isWalkIn,
         joinedAt: a.queuedAt || a.createdAt,
@@ -264,9 +273,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
 
         setActiveBranchId(
-          user.role === "customer"
+          (user.role === "customer"
             ? user.preferredBranch
-            : (user.staffBranch ?? user.ownerBranch ?? "lhasurane")
+            : (user.staffBranch ?? user.ownerBranch)) ?? "lhasurane"
         );
         const unsubs: Array<() => void> = [];
         unsubs.push(userService.onUser(fbUser.uid, (updatedUser) => {
@@ -428,44 +437,62 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const checkInAppointment = useCallback(async (id: string) => {
     const a = appointments.find((x) => x.id === id);
-    if (!a) return;
+    if (!a || a.status === "checked_in") return;
     const token = await branchService.assignToken(a.branchId);
     await appointmentService.update(id, {
       status: "checked_in",
       token,
       queuedAt: new Date().toISOString(),
     });
+    await branchService.incrementStats(a.branchId, { waiting: 1 });
   }, [appointments]);
 
   const startService = useCallback(async (id: string, staffId?: string) => {
     const a = appointments.find((x) => x.id === id);
-    if (!a) return;
+    if (!a || a.status === "in_service") return;
+    const isWaiting = a.status === "checked_in";
     await appointmentService.update(id, {
       status: "in_service",
       assignedStaffId: staffId ?? currentUser?.id,
     });
     if (a.token != null) await branchService.setNowServing(a.branchId, a.token);
+    await branchService.incrementStats(a.branchId, { 
+      inService: 1, 
+      waiting: isWaiting ? -1 : 0 
+    });
   }, [appointments, currentUser]);
 
   const completeAppointment = useCallback(async (id: string) => {
     const a = appointments.find((x) => x.id === id);
-    if (!a) return;
+    if (!a || a.status === "completed") return;
+    const wasInService = a.status === "in_service";
     await appointmentService.update(id, { status: "completed", token: null });
     if (a.token != null && serving[a.branchId] === a.token)
       await branchService.setNowServing(a.branchId, null);
+    if (wasInService) {
+      await branchService.incrementStats(a.branchId, { inService: -1 });
+    }
   }, [appointments, serving]);
 
   const markNoShow = useCallback(async (id: string) => {
     const a = appointments.find((x) => x.id === id);
-    if (!a) return;
+    if (!a || a.status === "no_show") return;
+    const wasInService = a.status === "in_service";
+    const wasWaiting = a.status === "checked_in";
     await appointmentService.update(id, { status: "no_show", token: null });
     if (a.token != null && serving[a.branchId] === a.token)
       await branchService.setNowServing(a.branchId, null);
+    await branchService.incrementStats(a.branchId, {
+      inService: wasInService ? -1 : 0,
+      waiting: wasWaiting ? -1 : 0
+    });
   }, [appointments, serving]);
 
   const cancelAppointment = useCallback(async (id: string) => {
     const a = appointments.find((x) => x.id === id);
-    if (!a) return;
+    if (!a || a.status === "cancelled") return;
+    const wasInService = a.status === "in_service";
+    const wasWaiting = a.status === "checked_in";
     await appointmentService.update(id, { status: "cancelled", token: null });
     await notificationService.create({
       recipientId: a.customerId,
@@ -476,6 +503,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
     if (a.token != null && serving[a.branchId] === a.token)
       await branchService.setNowServing(a.branchId, null);
+    await branchService.incrementStats(a.branchId, {
+      inService: wasInService ? -1 : 0,
+      waiting: wasWaiting ? -1 : 0
+    });
   }, [appointments, serving]);
 
   const joinWalkIn = useCallback<DataContextValue["joinWalkIn"]>(
@@ -484,9 +515,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const token = await branchService.assignToken(branchId);
       const appt: Omit<Appointment, "id"> = {
         reference: generateReference(),
-        customerId: "walkin",
-        customerName,
-        customerPhone: "—",
+        customerId: currentUser?.role === "customer" ? currentUser.id : "walkin",
+        customerUid: currentUser?.role === "customer" ? currentUser.uid : currentUser?.uid,
+        customerName: currentUser?.role === "customer" ? currentUser.fullName : customerName,
+        customerPhone: currentUser?.role === "customer" ? currentUser.phone : "—",
         branchId,
         serviceIds: serviceIds.length ? serviceIds : [branchId === "lhasurane" ? "svc_lh_1" : "svc_ko_1"],
         date: todayISO(),
@@ -505,6 +537,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         message: `${customerName} joined the queue at ${branchLabel(branchId)}.`,
         kind: "queue",
       });
+      await branchService.incrementStats(branchId, { waiting: 1 });
       return {
         token,
         appointmentId: id,
@@ -609,6 +642,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     await notificationService.markRead(id);
   }, []);
 
+  const deleteNotification = useCallback(async (id: string) => {
+    await notificationService.delete(id);
+  }, []);
+
   const markAllNotificationsRead = useCallback(async () => {
     if (currentUser) await notificationService.markAllRead(currentUser.id);
   }, [currentUser]);
@@ -623,6 +660,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }),
     [notifications]
   );
+
+  const clearAllNotifications = useCallback(async () => {
+    if (currentUser) {
+      const userList = notificationsFor(currentUser).filter(
+        (n) => currentUser.role === "owner" || n.recipientUid === currentUser.uid || n.recipientId === currentUser.id
+      );
+      if (userList.length > 0) {
+        try {
+          await notificationService.deleteMultiple(userList.map((n) => n.id));
+        } catch (e) {
+          console.error("Failed to clear notifications:", e);
+        }
+      }
+    }
+  }, [currentUser, notificationsFor]);
 
   const unreadCount = useCallback(
     (user: User) => notificationsFor(user).filter((n) => !n.read).length,
@@ -652,21 +704,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const getShopStatus = useCallback(
     (branchId: BranchId): ShopStatus => {
       const branch = branches.find((b) => b.id === branchId) ?? DEFAULT_BRANCHES.find((b) => b.id === branchId) ?? DEFAULT_BRANCHES[0];
-      const q = queue[branchId] ?? [];
-      const inServiceCount = appointments.filter(
-        (a) => a.branchId === branchId && a.status === "in_service" && a.date === todayISO()
-      ).length;
+      const waitingCount = branch.waitingCount ?? 0;
+      const inServiceCount = branch.inServiceCount ?? 0;
+      const checkedInCount = branch.checkedInCount ?? 0;
+      const inShopCount = waitingCount + inServiceCount;
       return {
         isOpen: branch.isOpen,
         nowServingToken: serving[branchId] ?? null,
-        waitingCount: q.length,
+        waitingCount,
+        checkedInCount,
         inServiceCount,
-        estimatedWaitMin: q.length * AVG_SERVICE_MIN,
+        inShopCount,
+        estimatedWaitMin: waitingCount * AVG_SERVICE_MIN,
         availableChairs: Math.max(0, branch.availableChairs - inServiceCount),
         totalChairs: branch.totalChairs,
       };
     },
-    [branches, queue, appointments, serving]
+    [branches, serving]
   );
 
   const value = useMemo<DataContextValue>(
@@ -711,6 +765,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       notify,
       markNotificationRead,
       markAllNotificationsRead,
+      clearAllNotifications,
+      deleteNotification,
       notificationsFor,
       unreadCount,
       getBranch,
@@ -726,7 +782,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       completeAppointment, markNoShow, cancelAppointment, joinWalkIn, callNext, leaveQueue,
       convertToStaff, toggleStaffActive, addService, updateService, deleteService, toggleService,
       addOffer, updateOffer, deleteOffer, toggleOffer, notify, markNotificationRead,
-      markAllNotificationsRead, notificationsFor, unreadCount, getBranch, getServicesFor,
+      markAllNotificationsRead, clearAllNotifications, notificationsFor, unreadCount, getBranch, getServicesFor,
       getOffersFor, getAppointmentsForBranch, getShopStatus,
     ]
   );

@@ -13,7 +13,7 @@ export function MyQueueCard({ branchId }: { branchId: BranchId }) {
 
   const q = queue[branchId] ?? [];
   const myEntry = q.find(
-    (e) => !e.isWalkIn && e.customerName === currentUser.fullName
+    (e) => e.customerUid === currentUser.uid
   );
   const status = getShopStatus(branchId);
   const position = myEntry ? q.findIndex((e) => e.token === myEntry.token) + 1 : 0;

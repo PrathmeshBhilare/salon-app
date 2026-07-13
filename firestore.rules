@@ -30,6 +30,7 @@ service cloud.firestore {
     // ---- branches ----
     match /branches/{id} {
       allow read: if signedIn();
+      allow update: if signedIn();
       allow write: if isOwner();
     }
 
@@ -64,12 +65,22 @@ service cloud.firestore {
     match /notifications/{id} {
       allow read: if signedIn() && (
         resource.data.recipientUid == request.auth.uid ||
+        resource.data.recipientId == userDoc().userId ||
+        resource.data.recipientId == request.auth.uid ||
         resource.data.audience == userDoc().role ||
         (resource.data.branchId == staffBranch())
       );
       allow create: if signedIn();
-      allow update: if signedIn() && resource.data.recipientUid == request.auth.uid;
-      allow delete: if isOwner();
+      allow update: if signedIn() && (
+        resource.data.recipientUid == request.auth.uid ||
+        resource.data.recipientId == userDoc().userId ||
+        resource.data.recipientId == request.auth.uid
+      );
+      allow delete: if isOwner() || (signedIn() && (
+        resource.data.recipientUid == request.auth.uid ||
+        resource.data.recipientId == userDoc().userId ||
+        resource.data.recipientId == request.auth.uid
+      ));
     }
 
     // ---- settings ----

@@ -7,6 +7,7 @@ import { STATUS_LABELS } from "@/lib/types";
 import type { AppointmentStatus } from "@/lib/types";
 import { initials } from "@/lib/format";
 import { statusColor } from "@/lib/format";
+import { useData } from "@/lib/store";
 
 export function PageHeader({
   title,
@@ -121,6 +122,14 @@ export function EmptyState({
 }
 
 export function StatusBadge({ status }: { status: AppointmentStatus }) {
+  const { currentUser } = useData();
+  let label = STATUS_LABELS[status];
+  
+  if (currentUser?.role === "customer") {
+    if (status === "cancelled") label = "Cancelled by You";
+    if (status === "rejected") label = "Cancelled by Salon";
+  }
+
   return (
     <span
       className={cn(
@@ -128,7 +137,7 @@ export function StatusBadge({ status }: { status: AppointmentStatus }) {
         statusColor(status)
       )}
     >
-      {STATUS_LABELS[status]}
+      {label}
     </span>
   );
 }

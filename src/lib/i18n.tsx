@@ -11,6 +11,7 @@ const translations: Record<string, Record<Language, string>> = {
   "Book": { en: "Book", hi: "बुक", mr: "बुक करा" },
   "Offers": { en: "Offers", hi: "ऑफर", mr: "ऑफर" },
   "My Bookings": { en: "My Bookings", hi: "मेरी बुकिंग", mr: "माझे बुकिंग" },
+  "nav.bookings": { en: "My Bookings", hi: "मेरी बुकिंग", mr: "माझे बुकिंग" },
   "Notifications": { en: "Notifications", hi: "सूचनाएँ", mr: "सूचना" },
   "Settings": { en: "Settings", hi: "सेटिंग्स", mr: "सेटिंग्स" },
   "Profile": { en: "Profile", hi: "प्रोफ़ाइल", mr: "प्रोफाइल" },
@@ -86,6 +87,7 @@ const translations: Record<string, Record<Language, string>> = {
   "min": { en: "min", hi: "मिनट", mr: "मिनिटे" },
 
   // My Bookings
+  "bookings.subtitle": { en: "Stay updated with your bookings.", hi: "अपनी बुकिंग से अपडेट रहें।", mr: "तुमच्या बुकिंगसह अपडेट रहा." },
   "bookings.history": { en: "History", hi: "इतिहास", mr: "इतिहास" },
   "bookings.cancel_title": { en: "Cancel appointment?", hi: "अपॉइंटमेंट रद्द करें?", mr: "अपॉइंटमेंट रद्द करू?" },
   "bookings.cancel_desc": { en: "will be cancelled.", hi: "रद्द कर दिया जाएगा।", mr: "रद्द केले जाईल." },
@@ -106,6 +108,8 @@ const translations: Record<string, Record<Language, string>> = {
   "notifications.mark_all": { en: "Mark all as read", hi: "सभी को पढ़ा हुआ मानें", mr: "सर्व वाचलेले म्हणून चिन्हांकित करा" },
   "notifications.empty": { en: "You're all caught up", hi: "कोई नई सूचना नहीं", mr: "कोणतीही नवीन सूचना नाही" },
   "notifications.empty_desc": { en: "No new notifications right now.", hi: "अभी कोई नई सूचना नहीं है।", mr: "सध्या कोणतीही नवीन सूचना नाही." },
+  "notifications.unread": { en: "unread notifications", hi: "अपठित सूचनाएँ", mr: "न वाचलेल्या सूचना" },
+  "notifications.caught_up": { en: "You're all caught up!", hi: "आपने सब पढ़ लिया है!", mr: "तुम्ही सर्व पाहिले आहे!" },
 };
 
 interface I18nContextType {

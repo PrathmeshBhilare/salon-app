@@ -11,27 +11,28 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 const FILTERS: { value: string; label: string }[] = [
-  { value: "active", label: "Active" },
+  { value: "all", label: "All" },
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "checked_in", label: "Checked In" },
   { value: "in_service", label: "In Service" },
-  { value: "completed", label: "Done" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 export default function StaffAppointments() {
   const { currentUser, activeBranchId, appointments } = useData();
-  const [tab, setTab] = useState("active");
+  const [tab, setTab] = useState("all");
   if (!currentUser) return null;
 
   const list = useMemo(() => {
     return appointments
       .filter((a) => a.branchId === activeBranchId)
       .filter((a) => {
-        if (tab === "active")
-          return ["pending", "confirmed", "checked_in", "in_service"].includes(a.status);
-        if (tab === "completed")
-          return ["completed", "cancelled", "rejected", "no_show"].includes(a.status);
+        if (tab === "all") return true;
+        if (tab === "completed") return a.status === "completed";
+        if (tab === "cancelled")
+          return ["cancelled", "rejected", "no_show"].includes(a.status);
         return a.status === (tab as AppointmentStatus);
       })
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));

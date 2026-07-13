@@ -18,6 +18,9 @@ export interface Branch {
   workingHours: WorkingHour[];
   nextToken: number;
   nowServing: number | null;
+  waitingCount: number;
+  inServiceCount: number;
+  checkedInCount: number;
 }
 
 export interface WorkingHour {
@@ -112,6 +115,7 @@ export interface QueueEntry {
   token: number;
   appointmentId: string | null;
   customerName: string;
+  customerUid?: string;
   branchId: BranchId;
   isWalkIn: boolean;
   joinedAt: string;
@@ -134,7 +138,9 @@ export interface ShopStatus {
   isOpen: boolean;
   nowServingToken: number | null;
   waitingCount: number;
+  checkedInCount: number;
   inServiceCount: number;
+  inShopCount: number;
   estimatedWaitMin: number;
   availableChairs: number;
   totalChairs: number;

@@ -11,12 +11,12 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const FILTERS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "active", label: "Active" },
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
   { value: "checked_in", label: "Checked In" },
   { value: "in_service", label: "In Service" },
-  { value: "completed", label: "Done" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 export default function OwnerAppointments() {
@@ -29,10 +29,10 @@ export default function OwnerAppointments() {
       .filter((a) => a.branchId === activeBranchId)
       .filter((a) => {
         if (tab === "all") return true;
-        if (tab === "active")
-          return ["pending", "confirmed", "checked_in", "in_service"].includes(a.status);
-        if (tab === "completed")
-          return ["completed", "cancelled", "rejected", "no_show"].includes(a.status);
+
+        if (tab === "completed") return a.status === "completed";
+        if (tab === "cancelled")
+          return ["cancelled", "rejected", "no_show"].includes(a.status);
         return a.status === (tab as AppointmentStatus);
       })
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
