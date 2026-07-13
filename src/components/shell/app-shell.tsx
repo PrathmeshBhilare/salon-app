@@ -10,11 +10,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui-kit";
+import { useTranslation } from "@/lib/i18n";
 import { BranchSwitcher } from "./branch-switcher";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { currentUser, logout, unreadCount } = useData();
+  const { t } = useTranslation();
   const pathname = usePathname();
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -40,9 +42,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary font-display text-lg font-bold text-primary-foreground">
               G
             </div>
-            <div className="leading-tight">
+            <div className="leading-tight text-sidebar-foreground">
               <p className="font-display text-sm font-semibold">Glow &amp; Glamour</p>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hair Studio</p>
+              <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground/70">Hair Studio</p>
             </div>
           </div>
 
@@ -62,7 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <Icon className={cn("h-5 w-5", active && "text-primary")} />
-                  {item.label}
+                  {t(item.label as any)}
                   {item.badge === "notifications" && unread > 0 && (
                     <Badge className="ml-auto h-5 min-w-5 justify-center bg-primary px-1.5 text-[10px] text-primary-foreground">
                       {unread}
@@ -80,7 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="mb-2 w-full justify-start gap-2"
                 onClick={() => router.push(`/${role}-reception`)}
               >
-                <MonitorDot className="h-4 w-4 text-primary" /> Reception Mode
+                <MonitorDot className="h-4 w-4 text-primary" /> {t("app.reception_mode")}
               </Button>
             )}
             <div className="flex items-center gap-3 rounded-xl bg-sidebar-accent/50 p-2.5">
@@ -133,9 +135,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary font-display text-lg font-bold text-primary-foreground">
                   G
                 </div>
-                <div className="leading-tight">
+                <div className="leading-tight text-sidebar-foreground">
                   <p className="font-display text-sm font-semibold">Glow &amp; Glamour</p>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Hair Studio</p>
+                  <p className="text-[10px] uppercase tracking-widest text-sidebar-foreground/70">Hair Studio</p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} aria-label="Close">

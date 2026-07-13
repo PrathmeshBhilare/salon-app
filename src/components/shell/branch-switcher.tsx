@@ -21,7 +21,7 @@ export function BranchSwitcher({
 }) {
   const { branches, activeBranchId, setActiveBranch } = useData();
   const [open, setOpen] = useState(false);
-  const current = branches.find((b) => b.id === activeBranchId)!;
+  const current = branches.find((b) => b.id === activeBranchId) ?? branches[0];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

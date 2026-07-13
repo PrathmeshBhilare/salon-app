@@ -10,6 +10,7 @@ import { AppointmentActionCard } from "@/components/staff/appointment-actions";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const FILTERS: { value: string; label: string }[] = [
+  { value: "all", label: "All" },
   { value: "active", label: "Active" },
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
@@ -20,13 +21,14 @@ const FILTERS: { value: string; label: string }[] = [
 
 export default function OwnerAppointments() {
   const { currentUser, activeBranchId, appointments } = useData();
-  const [tab, setTab] = useState("active");
+  const [tab, setTab] = useState("all");
   if (!currentUser) return null;
 
   const list = useMemo(() => {
     return appointments
       .filter((a) => a.branchId === activeBranchId)
       .filter((a) => {
+        if (tab === "all") return true;
         if (tab === "active")
           return ["pending", "confirmed", "checked_in", "in_service"].includes(a.status);
         if (tab === "completed")
@@ -40,7 +42,7 @@ export default function OwnerAppointments() {
     <div className="space-y-6">
       <PageHeader
         title="Appointments"
-        subtitle={`All appointments at ${BRANCH_LABELS[activeBranchId]}`}
+        subtitle={`All ${appointments.length} appointments at ${BRANCH_LABELS[activeBranchId]}`}
         action={<div className="hidden sm:block"><BranchSwitcher /></div>}
       />
       <Tabs value={tab} onValueChange={setTab}>

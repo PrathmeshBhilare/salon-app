@@ -14,18 +14,25 @@ import type { BranchId, Role, User } from "@/lib/types";
 import { generateUserId } from "@/lib/format";
 
 function toUser(id: string, data: Record<string, unknown>): User {
-  return { id: (data.userId as string) ?? id, ...(data as Omit<User, "id">) };
+  const role = (data.role as Role) || "customer";
+  return { 
+    uid: id,
+    id: (data.userId as string) ?? id, 
+    ...data, 
+    fullName: (data.fullName as string) || "Guest",
+    email: (data.email as string) || "",
+    phone: (data.phone as string) || "",
+    role 
+  } as User;
 }
 
 export const userService = {
   async generateUniqueUserId(): Promise<string> {
-    const db = getDb();
-    for (let i = 0; i < 8; i++) {
-      const id = generateUserId();
-      const snap = await getDocs(query(collection(db, "users"), where("userId", "==", id)));
-      if (snap.empty) return id;
-    }
-    return generateUserId() + Math.floor(Math.random() * 9);
+    // Generate a random 10-character ID.
+    // We cannot query the entire users collection from the client to check uniqueness 
+    // due to Firestore security rules (only owners can read all users).
+    // The collision probability is astronomically low anyway.
+    return generateUserId();
   },
 
   async createUser(input: {
@@ -77,6 +84,11 @@ export const userService = {
     if (ref) await updateDoc(ref, { ...patch, updatedAt: new Date().toISOString() });
   },
 
+  async updateUserByUid(uid: string, patch: Partial<User>) {
+    const db = getDb();
+    await updateDoc(doc(db, "users", uid), { ...patch, updatedAt: new Date().toISOString() });
+  },
+
   async refFor(userId: string) {
     const db = getDb();
     const snap = await getDocs(query(collection(db, "users"), where("userId", "==", userId)));
@@ -93,6 +105,14 @@ export const userService = {
     const db = getDb();
     return onSnapshot(collection(db, "users"), (snap) => {
       cb(snap.docs.map((d) => toUser(d.id, d.data() as Record<string, unknown>)));
+    });
+  },
+
+  onUser(uid: string, cb: (user: User | null) => void) {
+    const db = getDb();
+    return onSnapshot(doc(db, "users", uid), (d) => {
+      if (d.exists()) cb(toUser(d.id, d.data() as Record<string, unknown>));
+      else cb(null);
     });
   },
 

@@ -39,7 +39,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!currentUser && isProtected) {
       router.replace("/login");
     } else if (currentUser && (isAuthRoute || pathname === "/")) {
-      router.replace(`/${currentUser.role}`);
+      const targetRole = currentUser.role || "customer";
+      router.replace(`/${targetRole}`);
     }
   }, [ready, currentUser, isProtected, isAuthRoute, pathname, router]);
 

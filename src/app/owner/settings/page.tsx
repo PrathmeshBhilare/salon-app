@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Building2, Clock, LogOut, Moon, Sun } from "lucide-react";
+import { Bell, Building2, Clock, LogOut, Moon, Sun, Pencil } from "lucide-react";
+import { EditBranchDialog } from "./edit-branch-dialog";
+import { EditWorkingHoursDialog } from "./edit-working-hours-dialog";
 import { useData } from "@/lib/store";
 import { useTheme } from "next-themes";
-import { BRANCH_LABELS } from "@/lib/types";
+import { BRANCH_LABELS, type Branch } from "@/lib/types";
 import { PageHeader } from "@/components/ui-kit";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,8 @@ export default function OwnerSettings() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [pwOpen, setPwOpen] = useState(false);
+  const [editingBranchInfo, setEditingBranchInfo] = useState<Branch | null>(null);
+  const [editingWorkingHours, setEditingWorkingHours] = useState<Branch | null>(null);
   const [rules, setRules] = useState({
     autoConfirm: false,
     allowWalkIn: true,
@@ -94,7 +98,12 @@ export default function OwnerSettings() {
           {branches.map((b) => (
             <div key={b.id} className="rounded-xl border border-border p-4">
               <div className="flex items-center justify-between">
-                <p className="font-semibold">{b.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold">{b.name}</p>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => setEditingBranchInfo(b)}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </div>
                 <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", b.isOpen ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300")}>
                   {b.isOpen ? "Open" : "Closed"}
                 </span>
@@ -116,7 +125,12 @@ export default function OwnerSettings() {
         </div>
         {branches.map((b) => (
           <div key={b.id} className="rounded-xl border border-border p-3">
-            <p className="mb-2 text-sm font-semibold">{b.name}</p>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-semibold">{b.name}</p>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => setEditingWorkingHours(b)}>
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
               {b.workingHours.map((w) => (
                 <div key={w.day} className="flex justify-between">
@@ -195,6 +209,17 @@ export default function OwnerSettings() {
       </Card>
 
       <PasswordDialog open={pwOpen} onOpenChange={setPwOpen} />
+
+      <EditBranchDialog 
+        branch={editingBranchInfo} 
+        open={!!editingBranchInfo} 
+        onOpenChange={(open) => !open && setEditingBranchInfo(null)} 
+      />
+      <EditWorkingHoursDialog 
+        branch={editingWorkingHours} 
+        open={!!editingWorkingHours} 
+        onOpenChange={(open) => !open && setEditingWorkingHours(null)} 
+      />
     </div>
   );
 }

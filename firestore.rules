@@ -21,9 +21,9 @@ service cloud.firestore {
 
     // ---- users ----
     match /users/{id} {
-      allow read: if signedIn() && (resource.data.uid == request.auth.uid || isOwner());
-      allow create: if signedIn() && request.auth.uid == request.resource.data.uid;
-      allow update: if signedIn() && (resource.data.uid == request.auth.uid || isOwner());
+      allow read: if signedIn() && (id == request.auth.uid || isOwner());
+      allow create: if signedIn() && id == request.auth.uid;
+      allow update: if signedIn() && (id == request.auth.uid || isOwner());
       allow delete: if isOwner();
     }
 

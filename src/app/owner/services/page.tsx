@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Pencil, Plus, Scissors, Trash2 } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { serviceService } from "@/lib/services/serviceService";
+import { Pencil, Plus, Scissors, Trash2, Search } from "lucide-react";
 import { useData } from "@/lib/store";
 import { BRANCH_LABELS, type BranchId, type Service } from "@/lib/types";
 import { PageHeader, Section, EmptyState } from "@/components/ui-kit";
@@ -9,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { ServiceDialog } from "@/components/owner/service-dialog";
 import { formatPrice } from "@/lib/format";
 import { toast } from "sonner";
@@ -26,15 +29,24 @@ import {
 export default function OwnerServices() {
   const { currentUser, activeBranchId, services, toggleService, deleteService } = useData();
   const [branch, setBranch] = useState<BranchId | "all">(activeBranchId);
+  const [searchQuery, setSearchQuery] = useState("");
   const [editing, setEditing] = useState<Service | null>(null);
   const [adding, setAdding] = useState(false);
   const [toDelete, setToDelete] = useState<Service | null>(null);
+
+  useEffect(() => {
+    serviceService.cleanupDuplicates();
+  }, []);
+
   if (!currentUser) return null;
 
-  const list = useMemo(
-    () => services.filter((s) => (branch === "all" ? true : s.branchId === branch)),
-    [services, branch]
-  );
+  const list = useMemo(() => {
+    return services.filter((s) => {
+      const branchMatch = branch === "all" ? true : s.branchId === branch;
+      const searchMatch = searchQuery.trim() === "" || s.name.toLowerCase().includes(searchQuery.trim().toLowerCase());
+      return branchMatch && searchMatch;
+    });
+  }, [services, branch, searchQuery]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Service[]>();
@@ -57,58 +69,78 @@ export default function OwnerServices() {
         }
       />
 
-      <div className="flex gap-1">
-        {(["all", "lhasurane", "koregaon"] as const).map((b) => (
-          <button
-            key={b}
-            onClick={() => setBranch(b)}
-            className={
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors " +
-              (branch === b ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent")
-            }
-          >
-            {b === "all" ? "All Branches" : BRANCH_LABELS[b]}
-          </button>
-        ))}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex gap-1 flex-wrap">
+          {(["all", "lhasurane", "koregaon"] as const).map((b) => (
+            <button
+              key={b}
+              onClick={() => setBranch(b)}
+              className={
+                "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors " +
+                (branch === b ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent")
+              }
+            >
+              {b === "all" ? "All Branches" : BRANCH_LABELS[b]}
+            </button>
+          ))}
+        </div>
+        <div className="relative w-full sm:w-72 shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search services..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-card rounded-full"
+          />
+        </div>
       </div>
 
       {grouped.length === 0 ? (
-        <EmptyState icon={Scissors} title="No services" description="Add your first service to get started." />
+        <EmptyState icon={Scissors} title="No services found" description="Adjust your filters or add a new service to get started." />
       ) : (
-        grouped.map(([cat, items]) => (
-          <Section key={cat} title={cat}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {items.map((s) => (
-                <Card key={s.id} className="flex items-center gap-3 p-4 shadow-sm">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-primary">
-                    <Scissors className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatPrice(s.price)} · {s.durationMin} min · {BRANCH_LABELS[s.branchId]}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={s.active}
-                      onCheckedChange={() => {
-                        toggleService(s.id);
-                        toast.success(s.active ? "Service disabled" : "Service enabled");
-                      }}
-                    />
-                    <Button size="icon" variant="ghost" onClick={() => setEditing(s)} aria-label="Edit">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="text-rose-600" onClick={() => setToDelete(s)} aria-label="Delete">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </Section>
-        ))
+        <Accordion type="multiple" defaultValue={grouped.map((g) => g[0])} className="w-full space-y-4">
+          {grouped.map(([cat, items]) => (
+            <AccordionItem key={cat} value={cat} className="rounded-xl border border-border bg-card overflow-hidden">
+              <AccordionTrigger className="px-5 py-4 hover:no-underline hover:bg-muted/30 data-[state=open]:border-b border-border transition-colors">
+                <span className="font-semibold text-lg">{cat}</span>
+              </AccordionTrigger>
+              <AccordionContent className="p-0">
+                <div className="flex flex-col divide-y divide-border">
+                  {items.map((s) => (
+                    <div key={s.id} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 p-4 px-5 hover:bg-muted/10 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-base leading-tight">{s.name}</p>
+                        <p className="text-sm text-muted-foreground mt-1 flex items-center flex-wrap gap-x-2 gap-y-1">
+                          <span className="font-medium text-foreground">{formatPrice(s.price)}</span> 
+                          <span className="opacity-40">•</span> 
+                          <span>{s.durationMin} min</span> 
+                          <span className="opacity-40">•</span> 
+                          <Badge variant="secondary" className="font-normal text-[10px] uppercase tracking-wider">{BRANCH_LABELS[s.branchId]}</Badge>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <Switch
+                          checked={s.active}
+                          onCheckedChange={() => {
+                            toggleService(s.id);
+                            toast.success(s.active ? "Service disabled" : "Service enabled");
+                          }}
+                        />
+                        <div className="h-6 w-px bg-border mx-1 hidden sm:block"></div>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setEditing(s)} aria-label="Edit">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-rose-600" onClick={() => setToDelete(s)} aria-label="Delete">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       )}
 
       <ServiceDialog

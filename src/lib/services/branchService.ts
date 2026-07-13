@@ -25,7 +25,7 @@ const BRANCH_SEED: Record<BranchId, Omit<Branch, "nextToken" | "nowServing">> = 
     availableChairs: 3,
     totalChairs: 4,
     workingHours: [
-      { day: "Mon", open: "09:00", close: "20:00", closed: true },
+      { day: "Mon", open: "09:00", close: "20:00" },
       { day: "Tue", open: "09:00", close: "20:00" },
       { day: "Wed", open: "09:00", close: "20:00" },
       { day: "Thu", open: "09:00", close: "20:00" },

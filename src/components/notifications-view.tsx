@@ -1,7 +1,8 @@
 "use client";
 
-import { Bell, CalendarCheck, Info, Megaphone, Ticket, X } from "lucide-react";
+import { Bell, CalendarCheck, Info, Megaphone, Ticket, X, CheckCheck } from "lucide-react";
 import { useData } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 import { PageHeader, EmptyState } from "@/components/ui-kit";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,8 @@ const ICONS = {
 } as const;
 
 export function NotificationsView() {
-  const { currentUser, notificationsFor, unreadCount, markNotificationRead, markAllNotificationsRead } = useData();
+  const { currentUser, notifications, notificationsFor, unreadCount, markNotificationRead } = useData();
+  const { t } = useTranslation();
   if (!currentUser) return null;
   const list = notificationsFor(currentUser);
   const unread = unreadCount(currentUser);
@@ -27,18 +29,18 @@ export function NotificationsView() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Notifications"
-        subtitle={unread > 0 ? `${unread} unread` : "You're all caught up."}
+        title={t("notifications.title")}
+        subtitle={unread > 0 ? `${unread} ${t("notifications.unread")}` : t("notifications.caught_up")}
         action={
-          list.length > 0 ? (
-            <Button variant="outline" size="sm" onClick={markAllNotificationsRead}>
-              Mark all read
+          unread > 0 ? (
+            <Button variant="outline" size="sm" onClick={() => list.forEach((n) => markNotificationRead(n.id))}>
+              <CheckCheck className="mr-2 h-4 w-4" /> {t("notifications.mark_all")}
             </Button>
           ) : undefined
         }
       />
       {list.length === 0 ? (
-        <EmptyState icon={Bell} title="No notifications yet" description="We'll notify you about bookings and offers." />
+        <EmptyState icon={Bell} title={t("notifications.empty")} description={t("notifications.empty_desc")} />
       ) : (
         <div className="space-y-2">
           {list.map((n) => (

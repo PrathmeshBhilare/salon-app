@@ -2,22 +2,24 @@
 
 import { Tag } from "lucide-react";
 import { useData } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 import { BRANCH_LABELS } from "@/lib/types";
 import { PageHeader, Section, EmptyState } from "@/components/ui-kit";
 import { Card } from "@/components/ui/card";
 
 export default function CustomerOffers() {
   const { activeBranchId, getOffersFor } = useData();
+  const { t } = useTranslation();
   const offers = getOffersFor(activeBranchId).filter((o) => o.active);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Offers"
-        subtitle={`Exclusive deals at ${BRANCH_LABELS[activeBranchId]}`}
+        title={t("offers.title")}
+        subtitle={t("offers.subtitle", { branch: BRANCH_LABELS[activeBranchId] })}
       />
       {offers.length === 0 ? (
-        <EmptyState icon={Tag} title="No active offers" description="Check back soon for new deals." />
+        <EmptyState icon={Tag} title={t("offers.no_offers")} description={t("offers.no_offers_desc")} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {offers.map((o) => (

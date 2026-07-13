@@ -4,36 +4,41 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarPlus,
+  CalendarCheck,
   Clock,
   MapPin,
   Phone,
   Scissors,
-  Sparkles,
-  Ticket,
+  PlusCircle,
 } from "lucide-react";
 import { useData } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { PageHeader, Section } from "@/components/ui-kit";
+import { PageHeader, Section, EmptyState } from "@/components/ui-kit";
+import { useTranslation } from "@/lib/i18n";
 import { LiveStatusCard } from "@/components/branch/live-status";
 import { MyQueueCard } from "@/components/branch/my-queue";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { formatPrice, formatTime } from "@/lib/format";
 import { BRANCH_LABELS } from "@/lib/types";
 
-export default function CustomerHome() {
-  const { currentUser, activeBranchId, getBranch, getServicesFor, getOffersFor } = useData();
+export default function CustomerDashboard() {
+  const { currentUser, appointments, activeBranchId, getBranch, getServicesFor, getOffersFor } = useData();
+  const { t } = useTranslation();
+  
   if (!currentUser) return null;
   const branch = getBranch(activeBranchId);
   const services = getServicesFor(activeBranchId);
   const offers = getOffersFor(activeBranchId).filter((o) => o.active).slice(0, 4);
   const popular = services.slice(0, 4);
+  const upcoming = appointments.filter((a) => a.status === "confirmed");
+  const firstName = (currentUser.fullName || "Guest").split(" ")[0];
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Hello, ${currentUser.fullName.split(" ")[0]}`}
-        subtitle="Your salon is ready when you are."
+        title={`Hello, ${firstName}`}
+        subtitle={t("dashboard.book_visit")}
         action={
           <div className="hidden sm:block">
             <BranchSwitcher />
@@ -54,14 +59,38 @@ export default function CustomerHome() {
               <CalendarPlus className="h-6 w-6" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold">Book Appointment</p>
-              <p className="text-sm text-muted-foreground">Choose service & time</p>
+              <p className="font-semibold">{t("book.title")}</p>
+              <p className="text-sm text-muted-foreground">{t("book.subtitle")}</p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
           </Card>
         </Link>
         <MyQueueCardWrapper />
       </div>
+
+      <Section title={`${t("dashboard.upcoming")} (${upcoming.length})`}>
+        {upcoming.length === 0 ? (
+          <EmptyState
+            icon={CalendarCheck}
+            title={t("dashboard.no_upcoming")}
+            description={t("dashboard.book_visit")}
+          />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {upcoming.map((a) => (
+              <Card key={a.id} className="p-4 shadow-sm">
+                <p className="font-medium">
+                  {getServicesFor(a.branchId)
+                    .filter((s) => a.serviceIds.includes(s.id))
+                    .map((s) => s.name)
+                    .join(", ")}
+                </p>
+                <p className="text-sm text-muted-foreground">{a.date} at {a.time}</p>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Section>
 
       {offers.length > 0 && (
         <Section title="Latest Offers" action={<Link href="/customer/offers" className="text-sm font-medium text-primary">View all</Link>}>

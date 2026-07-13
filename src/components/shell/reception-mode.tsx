@@ -11,6 +11,7 @@ import {
   UserCheck,
   UserX,
   X,
+  LayoutGrid,
 } from "lucide-react";
 import { useData } from "@/lib/store";
 import { BRANCH_LABELS, type BranchId } from "@/lib/types";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ServiceCatalog } from "./service-catalog";
 
 export function ReceptionMode({ onExit }: { onExit: () => void }) {
   const {
@@ -55,6 +57,7 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
   const status = getShopStatus(bid);
   const [walkOpen, setWalkOpen] = useState(false);
   const [walkName, setWalkName] = useState("");
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   const todays = appointments.filter((a) => a.branchId === bid && a.date === new Date().toISOString().slice(0, 10));
   const pending = todays.filter((a) => a.status === "pending");
@@ -106,6 +109,9 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <BranchSwitcher className="h-9 max-w-[42vw]" />
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setCatalogOpen(true)}>
+            <LayoutGrid className="h-4 w-4" /> Catalog
+          </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setWalkOpen(true)}>
             <Plus className="h-4 w-4" /> Walk-in
           </Button>
@@ -259,6 +265,20 @@ export function ReceptionMode({ onExit }: { onExit: () => void }) {
               Add to Queue
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
+        <DialogContent className="max-w-[90vw] w-full max-h-[90vh] overflow-hidden p-0 sm:p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle className="text-2xl font-display">Service Catalog</DialogTitle>
+            <DialogDescription>
+              Browse all our services. Click arrows or swipe to see more.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-y-auto px-4 pb-12">
+            <ServiceCatalog services={getServicesFor(bid)} />
+          </div>
         </DialogContent>
       </Dialog>
     </div>

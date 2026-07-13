@@ -26,11 +26,19 @@ export const notificationService = {
     kind: AppNotification["kind"];
   }) {
     const db = getDb();
-    await addDoc(collection(db, "notifications"), {
+    const docData = {
       ...input,
       read: false,
       createdAt: new Date().toISOString(),
+    } as any;
+    
+    Object.keys(docData).forEach((key) => {
+      if (docData[key] === undefined) {
+        delete docData[key];
+      }
     });
+
+    await addDoc(collection(db, "notifications"), docData);
   },
 
   async markRead(id: string) {
@@ -47,7 +55,7 @@ export const notificationService = {
   },
 
   onNotifications(
-    recipientId: string,
+    recipientId: string, // This is actually the uid now
     role: Role,
     cb: (list: AppNotification[]) => void
   ) {
@@ -60,7 +68,7 @@ export const notificationService = {
       cb(arr);
     };
     const unsub1 = onSnapshot(
-      query(collection(db, "notifications"), where("recipientId", "==", recipientId)),
+      query(collection(db, "notifications"), where("recipientUid", "==", recipientId)),
       (snap) => {
         snap.docChanges().forEach((c) => {
           if (c.type === "removed") map.delete(c.doc.id);

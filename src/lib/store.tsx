@@ -37,6 +37,59 @@ import { notificationService } from "./services/notificationService";
 
 const AVG_SERVICE_MIN = 30;
 
+export const DEFAULT_BRANCHES: Branch[] = [
+  {
+    id: "lhasurane",
+    name: "Lhasurane",
+    tagline: "Neighbourhood elegance, everyday glow.",
+    address: "Shop 4, Lhasurane Main Road, Near City Bank",
+    city: "Lhasurane",
+    phone: "+91 98220 11223",
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Glow+and+Glamour+Lhasurane",
+    lat: 19.2183,
+    lng: 72.9781,
+    isOpen: true,
+    availableChairs: 3,
+    totalChairs: 4,
+    nextToken: 0,
+    nowServing: null,
+    workingHours: [
+      { day: "Mon", open: "09:00", close: "20:00" },
+      { day: "Tue", open: "09:00", close: "20:00" },
+      { day: "Wed", open: "09:00", close: "20:00" },
+      { day: "Thu", open: "09:00", close: "20:00" },
+      { day: "Fri", open: "09:00", close: "20:00" },
+      { day: "Sat", open: "09:00", close: "21:00" },
+      { day: "Sun", open: "10:00", close: "18:00" },
+    ],
+  },
+  {
+    id: "koregaon",
+    name: "Koregaon",
+    tagline: "Full-service beauty & unisex salon.",
+    address: "Plot 12, Koregaon Park Annexe, Lane 7",
+    city: "Koregaon",
+    phone: "+91 98220 44556",
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=Glow+and+Glamour+Koregaon",
+    lat: 18.5362,
+    lng: 73.8923,
+    isOpen: true,
+    availableChairs: 4,
+    totalChairs: 6,
+    nextToken: 0,
+    nowServing: null,
+    workingHours: [
+      { day: "Mon", open: "09:30", close: "21:00" },
+      { day: "Tue", open: "09:30", close: "21:00" },
+      { day: "Wed", open: "09:30", close: "21:00" },
+      { day: "Thu", open: "09:30", close: "21:00" },
+      { day: "Fri", open: "09:30", close: "21:00" },
+      { day: "Sat", open: "09:00", close: "22:00" },
+      { day: "Sun", open: "09:00", close: "20:00" },
+    ],
+  },
+];
+
 interface DataContextValue {
   ready: boolean;
   users: User[];
@@ -131,7 +184,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeBranchId, setActiveBranchId] = useState<BranchId>("lhasurane");
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branches, setBranches] = useState<Branch[]>(DEFAULT_BRANCHES);
   const [services, setServices] = useState<Service[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -170,27 +223,74 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       } catch {
         /* ignore if offline */
       }
-      const user = await userService.getUserByUid(fbUser.uid);
-      if (!user) {
+      try {
+        let user = await userService.getUserByUid(fbUser.uid);
+        
+        // Auto-recover if the user exists in Firebase Auth but missing in Firestore
+        // (e.g., if they were created manually in the console or previous write failed)
+        if (!user) {
+          console.log("Firestore profile missing, auto-creating...");
+          const userId = await userService.createUser({
+            uid: fbUser.uid,
+            fullName: fbUser.displayName || "User",
+            phone: fbUser.phoneNumber || "",
+            email: fbUser.email || "",
+            preferredBranch: "lhasurane",
+            role: "customer",
+          });
+          user = await userService.get(userId);
+        }
+
+        if (!user) {
+          setCurrentUser(null);
+          setReady(true);
+          return;
+        }
+        // Auto-promote the designated owner email
+        const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL;
+        if (ownerEmail && user.email.toLowerCase() === ownerEmail.toLowerCase() && user.role !== "owner") {
+          await userService.updateUser(user.id, { role: "owner", ownerBranch: "lhasurane" as BranchId });
+          user.role = "owner";
+          user.ownerBranch = "lhasurane";
+        }
+        setCurrentUser(user);
+
+        try {
+          await serviceService.ensureServices(user.role, user.uid, async (uid, role) => {
+            await userService.updateUserByUid(uid, { role: role as any });
+          });
+        } catch {
+          /* ignore if offline or failing */
+        }
+
+        setActiveBranchId(
+          user.role === "customer"
+            ? user.preferredBranch
+            : (user.staffBranch ?? user.ownerBranch ?? "lhasurane")
+        );
+        const unsubs: Array<() => void> = [];
+        unsubs.push(userService.onUser(fbUser.uid, (updatedUser) => {
+          if (updatedUser) setCurrentUser(updatedUser);
+        }));
+        unsubs.push(branchService.onBranches((b) => setBranches(b.length > 0 ? b : DEFAULT_BRANCHES)));
+        unsubs.push(serviceService.onServices(setServices));
+        unsubs.push(offerService.onOffers(setOffers));
+        unsubs.push(appointmentService.onAppointments(
+          user.role, 
+          user.uid, 
+          user.staffBranch ?? null, 
+          setAppointments
+        ));
+        unsubs.push(notificationService.onNotifications(user.uid, user.role, setNotifications));
+        if (user.role === "owner") unsubs.push(userService.onUsers(setUsers));
+        listeners.current = unsubs;
+      } catch (e) {
+        console.error("Failed to load user profile:", e);
+        await authService.logout();
         setCurrentUser(null);
+      } finally {
         setReady(true);
-        return;
       }
-      setCurrentUser(user);
-      setActiveBranchId(
-        user.role === "customer"
-          ? user.preferredBranch
-          : (user.staffBranch ?? user.ownerBranch ?? "lhasurane")
-      );
-      const unsubs: Array<() => void> = [];
-      unsubs.push(branchService.onBranches(setBranches));
-      unsubs.push(serviceService.onServices(setServices));
-      unsubs.push(offerService.onOffers(setOffers));
-      unsubs.push(appointmentService.onAppointments(setAppointments));
-      unsubs.push(notificationService.onNotifications(user.id, user.role, setNotifications));
-      if (user.role === "owner") unsubs.push(userService.onUsers(setUsers));
-      listeners.current = unsubs;
-      setReady(true);
     });
     return () => unsub();
   }, [cleanup]);
@@ -242,12 +342,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const bookAppointment = useCallback<DataContextValue["bookAppointment"]>(
     async (input) => {
       const now = new Date().toISOString();
-      const reference = generateReference();
       const appt: Appointment = {
-        id: "",
-        reference,
+        reference: Math.random().toString(36).substring(2, 8).toUpperCase(),
         customerId: input.customerId,
-        customerUid: currentUser?.uid,
+        customerUid: currentUser?.uid || input.customerId,
         customerName: input.customerName,
         customerPhone: input.customerPhone,
         branchId: input.branchId,
@@ -258,13 +356,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         isWalkIn: false,
         token: null,
         createdAt: now,
-        notes: input.notes,
-      };
+      } as Appointment;
+      if (input.notes) appt.notes = input.notes;
+
       const id = await appointmentService.add(appt);
       appt.id = id;
       await notificationService.create({
         recipientId: input.customerId,
-        recipientUid: currentUser?.uid,
+        recipientUid: currentUser?.uid || input.customerId,
         title: "Booking Received",
         message: `Your appointment at ${branchLabel(input.branchId)} is pending confirmation.`,
         kind: "booking",
@@ -284,37 +383,47 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       });
       return appt;
     },
-    []
+    [currentUser]
   );
 
   const confirmAppointment = useCallback(async (id: string) => {
-    const a = appointments.find((x) => x.id === id);
-    if (!a) return;
-    await appointmentService.update(id, {
-      status: "confirmed",
-      confirmedBy: currentUser?.id,
-      confirmedAt: new Date().toISOString(),
-    });
-    await notificationService.create({
-      recipientId: a.customerId,
-      recipientUid: a.customerUid,
-      title: "Booking Confirmed",
-      message: `Your appointment on ${a.date} at ${a.time} is confirmed.`,
-      kind: "booking",
-    });
+    try {
+      const a = appointments.find((x) => x.id === id);
+      if (!a) return;
+      await appointmentService.update(id, {
+        status: "confirmed",
+        confirmedBy: currentUser?.id,
+        confirmedAt: new Date().toISOString(),
+      });
+      await notificationService.create({
+        recipientId: a.customerId,
+        recipientUid: a.customerUid,
+        title: "Booking Confirmed",
+        message: `Your appointment on ${a.date} at ${a.time} is confirmed.`,
+        kind: "booking",
+      });
+    } catch (e: any) {
+      console.error("confirmAppointment internal error:", e);
+      throw e;
+    }
   }, [appointments, currentUser]);
 
   const rejectAppointment = useCallback(async (id: string) => {
-    const a = appointments.find((x) => x.id === id);
-    if (!a) return;
-    await appointmentService.update(id, { status: "rejected" });
-    await notificationService.create({
-      recipientId: a.customerId,
-      recipientUid: a.customerUid,
-      title: "Booking Rejected",
-      message: `Sorry, your appointment on ${a.date} could not be accommodated.`,
-      kind: "cancel",
-    });
+    try {
+      const a = appointments.find((x) => x.id === id);
+      if (!a) return;
+      await appointmentService.update(id, { status: "rejected" });
+      await notificationService.create({
+        recipientId: a.customerId,
+        recipientUid: a.customerUid,
+        title: "Booking Rejected",
+        message: `Sorry, your appointment on ${a.date} could not be accommodated.`,
+        kind: "cancel",
+      });
+    } catch (e: any) {
+      console.error("rejectAppointment internal error:", e);
+      throw e;
+    }
   }, [appointments]);
 
   const checkInAppointment = useCallback(async (id: string) => {
@@ -373,8 +482,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     async (branchId, customerName, serviceIds) => {
       const now = new Date().toISOString();
       const token = await branchService.assignToken(branchId);
-      const appt: Appointment = {
-        id: "",
+      const appt: Omit<Appointment, "id"> = {
         reference: generateReference(),
         customerId: "walkin",
         customerName,
@@ -522,7 +630,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   );
 
   const getBranch = useCallback(
-    (id: BranchId) => branches.find((b) => b.id === id) ?? (branches[0] as Branch),
+    (id: BranchId) => branches.find((b) => b.id === id) ?? branches[0] ?? DEFAULT_BRANCHES[0],
     [branches]
   );
 
@@ -543,7 +651,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const getShopStatus = useCallback(
     (branchId: BranchId): ShopStatus => {
-      const branch = branches.find((b) => b.id === branchId)!;
+      const branch = branches.find((b) => b.id === branchId) ?? DEFAULT_BRANCHES.find((b) => b.id === branchId) ?? DEFAULT_BRANCHES[0];
       const q = queue[branchId] ?? [];
       const inServiceCount = appointments.filter(
         (a) => a.branchId === branchId && a.status === "in_service" && a.date === todayISO()

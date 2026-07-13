@@ -34,6 +34,7 @@ export interface User {
   fullName: string;
   phone: string;
   email: string;
+  address?: string;
   password?: string;
   preferredBranch: BranchId;
   role: Role;
@@ -60,6 +61,7 @@ export interface Service {
   price: number;
   durationMin: number;
   active: boolean;
+  imageUrl?: string;
 }
 
 export interface Offer {

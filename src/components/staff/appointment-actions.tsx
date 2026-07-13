@@ -20,7 +20,10 @@ export function AppointmentActionCard({
   const act = (fn: () => Promise<void>, msg: string) => () => {
     fn()
       .then(() => toast.success(msg))
-      .catch(() => toast.error("Action failed. Please try again."));
+      .catch((err: any) => {
+        console.error("Action Error:", err);
+        toast.error(err?.message || "Action failed. Please try again.");
+      });
   };
 
   const actions = (() => {

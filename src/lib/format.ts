@@ -23,7 +23,8 @@ export function generateReference(): string {
   return `GG-${out}`;
 }
 
-export function initials(name: string): string {
+export function initials(name?: string): string {
+  if (!name) return "U";
   return name
     .split(" ")
     .map((p) => p[0])

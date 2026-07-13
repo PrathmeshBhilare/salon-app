@@ -16,7 +16,7 @@ export default function OwnerDashboard() {
   const status = getShopStatus(activeBranchId);
   const today = new Date().toISOString().slice(0, 10);
   const todays = appointments.filter((a) => a.branchId === activeBranchId && a.date === today);
-  const pending = todays.filter((a) => a.status === "pending").length;
+  const pending = appointments.filter((a) => a.branchId === activeBranchId && a.status === "pending").length;
   const confirmed = todays.filter((a) => a.status === "confirmed").length;
   const checkedIn = todays.filter((a) => a.status === "checked_in").length;
   const inService = todays.filter((a) => a.status === "in_service").length;
@@ -39,8 +39,8 @@ export default function OwnerDashboard() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Pending" value={pending} icon={Clock} />
-        <StatCard label="Confirmed" value={confirmed} icon={UserCheck} />
+        <StatCard label="Pending (All)" value={pending} icon={Clock} />
+        <StatCard label="Confirmed (Today)" value={confirmed} icon={UserCheck} />
         <StatCard label="Checked In" value={checkedIn} icon={Users} />
         <StatCard label="In Service" value={inService} icon={Activity} />
         <StatCard label="Completed" value={completed} icon={CheckCircle2} />
