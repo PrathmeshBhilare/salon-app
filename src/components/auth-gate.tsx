@@ -15,9 +15,12 @@ function Splash() {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="font-display text-2xl font-semibold tracking-tight text-primary"
+        className="flex flex-col items-center gap-4"
       >
-        Glow &amp; Glamour
+        <img src="/icons/icon-192.png" alt="Glow & Glamour" className="h-24 w-24 object-contain drop-shadow-sm" />
+        <div className="font-display text-2xl font-semibold tracking-tight text-primary">
+          Glow &amp; Glamour
+        </div>
       </motion.div>
       <div className="relative h-1.5 w-40 overflow-hidden rounded-full bg-muted">
         <div className="animate-shimmer absolute inset-0 rounded-full bg-primary/40" />
