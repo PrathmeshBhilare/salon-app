@@ -50,6 +50,20 @@ export const notificationService = {
 
     await addDoc(collection(db, "notifications"), docData);
 
+    // Auto-trigger an outside-the-app Push Notification
+    if (typeof window !== "undefined") {
+      fetch("/api/notifications/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: input.title,
+          message: input.message,
+          recipientUid: input.recipientUid,
+          audience: input.audience
+        })
+      }).catch((e) => console.error("Failed to trigger push notification", e));
+    }
+
     try {
       let q;
       if (input.recipientUid) {

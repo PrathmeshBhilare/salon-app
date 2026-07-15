@@ -34,34 +34,34 @@ export function AppointmentCard({
   return (
     <Card className={cn("space-y-4 p-4 shadow-sm", isFailed && "opacity-60")}>
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-semibold text-lg">{appointment.customerName}</p>
+            <p className="font-semibold text-lg break-words">{appointment.customerName}</p>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {appointment.customerPhone && (
-              <span className="flex items-center gap-1">
-                <Phone className="h-3 w-3" /> {appointment.customerPhone}
+              <span className="flex items-center gap-1 truncate">
+                <Phone className="h-3 w-3 shrink-0" /> <span className="truncate">{appointment.customerPhone}</span>
               </span>
             )}
             {customerEmail && (
-              <span className="flex items-center gap-1">
-                <Mail className="h-3 w-3" /> {customerEmail}
+              <span className="flex items-center gap-1 truncate">
+                <Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{customerEmail}</span>
               </span>
             )}
-            <span className="flex items-center gap-1 font-mono">
+            <span className="flex items-center gap-1 font-mono shrink-0">
                #{appointment.reference}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <StatusBadge status={appointment.status} />
           {isActive && (
-            <div className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="h-3 w-3" />
+            <div className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
               Active
             </div>
           )}
-          <StatusBadge status={appointment.status} />
         </div>
       </div>
 

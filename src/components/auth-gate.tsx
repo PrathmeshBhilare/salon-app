@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useData } from "@/lib/store";
+import { FCMProvider } from "@/components/fcm-provider";
 
 const AUTH_ROUTES = ["/login", "/register"];
 
@@ -51,5 +52,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const themeClass = currentUser ? `theme-${currentUser.role}` : "theme-customer";
 
-  return <div className={themeClass}>{children}</div>;
+  return (
+    <div className={themeClass}>
+      <FCMProvider>{children}</FCMProvider>
+    </div>
+  );
 }

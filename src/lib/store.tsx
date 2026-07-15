@@ -370,9 +370,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         
         const customerAppts = appointments.filter(a => a.customerUid === currentUser.uid);
         
-        const activeCount = customerAppts.filter(a => a.status === "pending" || a.status === "confirmed").length;
-        if (activeCount >= 2) {
-          throw new Error("You cannot have more than 2 active bookings at a time.");
+        const activeCount = customerAppts.filter(a => ["pending", "confirmed", "checked_in", "in_service"].includes(a.status)).length;
+        if (activeCount >= 3) {
+          const blockedUntil = new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString();
+          userService.updateUserByUid(currentUser.uid, { blockedUntil }).catch(console.error);
+          throw new Error("You have reached the limit of 3 active bookings. You are now blocked from booking for the next 5 hours.");
         }
         
         if (customerAppts.length > 0) {

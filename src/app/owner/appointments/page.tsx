@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { CalendarCheck } from "lucide-react";
 import { useData } from "@/lib/store";
 import { BRANCH_LABELS, type AppointmentStatus } from "@/lib/types";
@@ -20,10 +21,11 @@ const FILTERS: { value: string; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-export default function OwnerAppointments() {
+function OwnerAppointmentsContent() {
+  const searchParams = useSearchParams();
   const { currentUser, activeBranchId, appointments } = useData();
   const [tab, setTab] = useState("all");
-  const [filterDate, setFilterDate] = useState<string>(todayISO());
+  const [filterDate, setFilterDate] = useState<string>(searchParams.get("date") || todayISO());
   if (!currentUser) return null;
 
   const list = useMemo(() => {
@@ -80,5 +82,13 @@ export default function OwnerAppointments() {
         )}
       </Section>
     </div>
+  );
+}
+
+export default function OwnerAppointments() {
+  return (
+    <Suspense fallback={null}>
+      <OwnerAppointmentsContent />
+    </Suspense>
   );
 }

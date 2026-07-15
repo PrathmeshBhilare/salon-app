@@ -139,4 +139,9 @@ export const userService = {
     const active = !(d.data()?.active as boolean);
     await updateDoc(ref, { active, updatedAt: new Date().toISOString() });
   },
+
+  async saveFcmToken(uid: string, token: string) {
+    const db = getDb();
+    await updateDoc(doc(db, "users", uid), { fcmToken: token, updatedAt: new Date().toISOString() });
+  },
 };

@@ -20,7 +20,7 @@ import { LiveStatusCard } from "@/components/branch/live-status";
 import { MyQueueCard } from "@/components/branch/my-queue";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { formatPrice, formatTime } from "@/lib/format";
-import { BRANCH_LABELS } from "@/lib/types";
+import { BRANCH_LABELS, STATUS_LABELS } from "@/lib/types";
 
 export default function CustomerDashboard() {
   const { currentUser, appointments, activeBranchId, getBranch, getServicesFor, getOffersFor } = useData();
@@ -31,7 +31,7 @@ export default function CustomerDashboard() {
   const services = getServicesFor(activeBranchId);
   const offers = getOffersFor(activeBranchId).filter((o) => o.active).slice(0, 4);
   const popular = services.slice(0, 4);
-  const upcoming = appointments.filter((a) => a.status === "confirmed");
+  const upcoming = appointments.filter((a) => ["pending", "confirmed", "checked_in", "in_service"].includes(a.status));
   const firstName = (currentUser.fullName || "Guest").split(" ")[0];
 
   return (
@@ -50,6 +50,42 @@ export default function CustomerDashboard() {
         <BranchSwitcher className="w-full justify-between" />
       </div>
 
+      {upcoming.length > 0 && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2 text-primary">
+            <CalendarCheck className="w-5 h-5" /> Your Active Bookings
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {upcoming.map((a) => {
+              const servicesList = getServicesFor(a.branchId)
+                .filter((s) => a.serviceIds.includes(s.id))
+                .map((s) => s.name)
+                .join(", ");
+                
+              return (
+                <Link href="/customer/bookings" key={a.id}>
+                  <Card className="relative overflow-hidden border-2 border-primary/30 bg-gradient-to-br from-primary/10 to-background p-5 shadow-lg transition-transform hover:-translate-y-1">
+                    <div className="absolute top-0 right-0 rounded-bl-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-sm">
+                      {STATUS_LABELS[a.status].toUpperCase()}
+                    </div>
+                    <div className="mb-4 pr-20">
+                      <p className="text-2xl font-bold tracking-tight text-foreground">{a.date}</p>
+                      <p className="text-lg font-semibold text-primary">{formatTime(a.time)}</p>
+                    </div>
+                    <div className="space-y-1.5 border-t border-primary/10 pt-3">
+                      <p className="text-sm font-medium leading-tight">{servicesList}</p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5"/> {BRANCH_LABELS[a.branchId]} Branch
+                      </p>
+                    </div>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <LiveStatusCard branchId={activeBranchId} />
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -67,30 +103,6 @@ export default function CustomerDashboard() {
         </Link>
         <MyQueueCardWrapper />
       </div>
-
-      <Section title={`${t("dashboard.upcoming")} (${upcoming.length})`}>
-        {upcoming.length === 0 ? (
-          <EmptyState
-            icon={CalendarCheck}
-            title={t("dashboard.no_upcoming")}
-            description={t("dashboard.book_visit")}
-          />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {upcoming.map((a) => (
-              <Card key={a.id} className="p-4 shadow-sm">
-                <p className="font-medium">
-                  {getServicesFor(a.branchId)
-                    .filter((s) => a.serviceIds.includes(s.id))
-                    .map((s) => s.name)
-                    .join(", ")}
-                </p>
-                <p className="text-sm text-muted-foreground">{a.date} at {a.time}</p>
-              </Card>
-            ))}
-          </div>
-        )}
-      </Section>
 
       {offers.length > 0 && (
         <Section title="Latest Offers" action={<Link href="/customer/offers" className="text-sm font-medium text-primary">View all</Link>}>
@@ -112,74 +124,6 @@ export default function CustomerDashboard() {
         </Section>
       )}
 
-      <Section title="Popular Services" description={`At ${BRANCH_LABELS[activeBranchId]}`}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {popular.map((s) => (
-            <Card key={s.id} className="flex items-center justify-between gap-3 p-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-primary">
-                  <Scissors className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-medium">{s.name}</p>
-                  <p className="text-xs text-muted-foreground">{s.durationMin} min</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="font-semibold">{formatPrice(s.price)}</p>
-                <Link href="/customer/book" className="text-xs font-medium text-primary hover:underline">
-                  Book
-                </Link>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Salon Information">
-        <Card className="space-y-4 p-5 shadow-sm">
-          <div className="flex items-start gap-3">
-            <MapPin className="mt-0.5 h-5 w-5 text-primary" />
-            <div>
-              <p className="font-medium">{branch.name} Branch</p>
-              <p className="text-sm text-muted-foreground">{branch.address}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Clock className="mt-0.5 h-5 w-5 text-primary" />
-            <div>
-              <p className="font-medium">Working Hours</p>
-              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                {branch.workingHours.map((w) => (
-                  <span key={w.day}>
-                    {w.day}: {w.closed ? "Closed" : `${formatTime(w.open)} – ${formatTime(w.close)}`}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="overflow-hidden rounded-xl border border-border">
-            <iframe
-              title="map"
-              src={`https://www.google.com/maps?q=${encodeURIComponent(branch.name + " Glow and Glamour " + branch.address)}&output=embed`}
-              className="h-48 w-full"
-              loading="lazy"
-            />
-          </div>
-          <div className="flex gap-2">
-            <a href={`tel:${branch.phone}`} className="flex-1">
-              <Button variant="outline" className="w-full gap-2">
-                <Phone className="h-4 w-4" /> Call {branch.phone}
-              </Button>
-            </a>
-            <a href={branch.mapsUrl} target="_blank" rel="noreferrer" className="flex-1">
-              <Button variant="outline" className="w-full gap-2">
-                <MapPin className="h-4 w-4" /> Directions
-              </Button>
-            </a>
-          </div>
-        </Card>
-      </Section>
     </div>
   );
 }

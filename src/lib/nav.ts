@@ -12,6 +12,7 @@ import {
   UserRound,
   Users,
   Home,
+  Code,
 } from "lucide-react";
 
 export interface NavItem {
@@ -30,6 +31,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { label: "Notifications", href: "/customer/notifications", icon: Bell, badge: "notifications" },
     { label: "Settings", href: "/customer/settings", icon: Settings },
     { label: "Profile", href: "/customer/profile", icon: UserRound },
+    { label: "Crafted By", href: "/customer/developer", icon: Code },
   ],
   staff: [
     { label: "Dashboard", href: "/staff", icon: LayoutDashboard },
@@ -38,6 +40,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { label: "Notifications", href: "/staff/notifications", icon: Bell, badge: "notifications" },
     { label: "Settings", href: "/staff/settings", icon: Settings },
     { label: "Profile", href: "/staff/profile", icon: UserRound },
+    { label: "Crafted By", href: "/staff/developer", icon: Code },
   ],
   owner: [
     { label: "Dashboard", href: "/owner", icon: LayoutDashboard },
@@ -49,6 +52,7 @@ export const NAV: Record<Role, NavItem[]> = {
     { label: "Notifications", href: "/owner/notifications", icon: Bell, badge: "notifications" },
     { label: "Settings", href: "/owner/settings", icon: Settings },
     { label: "Profile", href: "/owner/profile", icon: UserRound },
+    { label: "Crafted By", href: "/owner/developer", icon: Code },
   ],
 };
 

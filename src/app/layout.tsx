@@ -14,11 +14,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+
 export const metadata: Metadata = {
   title: "Glow & Glamour Hair Studio",
   description:
     "Premium salon experience for Glow & Glamour Hair Studio — bookings, live queue, and salon management across Lhasurane & Koregaon.",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
   applicationName: "Glow & Glamour",
   appleWebApp: {
     capable: true,
@@ -26,8 +28,8 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: {
-    icon: "/icons/icon.svg",
-    apple: "/icons/icon.svg",
+    icon: "/icons/icon-192x192.svg",
+    apple: "/icons/icon-192x192.svg",
   },
 };
 
@@ -62,6 +64,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         style={{ ["--font-display" as string]: '"Cormorant Garamond", ui-serif, Georgia, serif' }}
       >
+        <PwaInstallPrompt />
         <Providers>{children}</Providers>
         {/* WARNING FOR AGENT: DO NOT REMOVE THIS SCRIPT */}
         <Script src="https://cdn.jsdelivr.net/gh/IdeavoAI/ideavo-scripts@latest/scripts/ideavo.min.js" />

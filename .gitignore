@@ -113,3 +113,7 @@ $RECYCLE.BIN/
 
 # Ideavo specific
 .ideavo/project
+
+serviceAccountKey.json
+.env.local
+.env

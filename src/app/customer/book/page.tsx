@@ -97,18 +97,22 @@ export default function BookPage() {
   }
 
   async function submit() {
-    const appt = await bookAppointment({
-      customerId: currentUser!.id,
-      customerName: currentUser!.fullName,
-      customerPhone: currentUser!.phone,
-      branchId,
-      serviceIds: selected,
-      date,
-      time,
-      notes: notes.trim() || undefined,
-    });
-    setDone({ ref: appt.reference });
-    toast.success("Appointment booked!");
+    try {
+      const appt = await bookAppointment({
+        customerId: currentUser!.id,
+        customerName: currentUser!.fullName,
+        customerPhone: currentUser!.phone,
+        branchId,
+        serviceIds: selected,
+        date,
+        time,
+        notes: notes.trim() || undefined,
+      });
+      setDone({ ref: appt.reference });
+      toast.success("Appointment booked!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to book appointment.");
+    }
   }
 
   if (done) {
