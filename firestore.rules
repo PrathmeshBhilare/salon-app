@@ -62,6 +62,12 @@ service cloud.firestore {
       );
     }
 
+    // ---- liveQueue ----
+    match /liveQueue/{id} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn() && (isOwner() || isStaff());
+    }
+
     // ---- notifications ----
     match /notifications/{id} {
       allow read: if signedIn() && (

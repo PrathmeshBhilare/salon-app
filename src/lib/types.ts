@@ -13,14 +13,14 @@ export interface Branch {
   lat: number;
   lng: number;
   isOpen: boolean;
+  openingTime: string;
+  closingTime: string;
+  averageServiceTime: number; // in minutes
+  activeStaff: number;
   availableChairs: number;
   totalChairs: number;
   workingHours: WorkingHour[];
-  nextToken: number;
-  nowServing: number | null;
-  waitingCount: number;
-  inServiceCount: number;
-  checkedInCount: number;
+  updatedAt?: string;
 }
 
 export interface WorkingHour {
@@ -91,6 +91,14 @@ export type AppointmentStatus =
   | "rejected"
   | "no_show";
 
+export type QueueStatus =
+  | "confirmed"
+  | "waiting"
+  | "in_service"
+  | "completed"
+  | "cancelled"
+  | "no_show";
+
 export interface Appointment {
   id: string;
   reference: string;
@@ -113,16 +121,38 @@ export interface Appointment {
   confirmedAt?: string;
   serviceStartedAt?: string;
   completedAt?: string;
+  queueStatus?: QueueStatus;
+  checkedIn?: boolean;
+  checkedInAt?: string;
 }
 
 export interface QueueEntry {
-  token: number;
+  token: number | null;
   appointmentId: string | null;
   customerName: string;
   customerUid?: string;
   branchId: BranchId;
   isWalkIn: boolean;
   joinedAt: string;
+}
+
+export interface LiveQueueEntry {
+  id: string; // Document ID
+  customerId: string;
+  appointmentId: string | null;
+  branchId: BranchId;
+  serviceIds: string[];
+  staffId: string | null;
+  customerName: string;
+  phone: string;
+  arrivalTime: string;
+  status: QueueStatus;
+  checkInTime: string;
+  serviceStartTime: string | null;
+  completedTime: string | null;
+  isWalkIn: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AppNotification {

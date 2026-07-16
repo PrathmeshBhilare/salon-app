@@ -76,7 +76,7 @@ function CardLive({ status, activeBranchId }: { status: ShopStatus; activeBranch
 
       <div className="flex flex-1 items-center justify-center gap-4 py-2 sm:py-0">
         <button 
-          onClick={() => branchService.incrementStats(activeBranchId, { waiting: -1 })}
+          
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600 shadow-sm transition-all hover:bg-rose-200 active:scale-95 dark:bg-rose-900/30 dark:hover:bg-rose-900/50"
         >
           <span className="text-2xl font-bold leading-none">-</span>
@@ -86,7 +86,7 @@ function CardLive({ status, activeBranchId }: { status: ShopStatus; activeBranch
           <p className="font-display text-5xl font-black leading-none tracking-tight">{status.waitingCount}</p>
         </div>
         <button 
-          onClick={() => branchService.incrementStats(activeBranchId, { waiting: 1 })}
+          
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-sm transition-all hover:bg-emerald-200 active:scale-95 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50"
         >
           <span className="text-2xl font-bold leading-none">+</span>

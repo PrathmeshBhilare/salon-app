@@ -16,18 +16,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader, Section, EmptyState } from "@/components/ui-kit";
 import { useTranslation } from "@/lib/i18n";
-import { LiveStatusCard } from "@/components/branch/live-status";
-import { MyQueueCard } from "@/components/branch/my-queue";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { formatPrice, formatTime } from "@/lib/format";
 import { BRANCH_LABELS, STATUS_LABELS } from "@/lib/types";
 
 export default function CustomerDashboard() {
-  const { currentUser, appointments, activeBranchId, getBranch, getServicesFor, getOffersFor } = useData();
+  const { currentUser, appointments, activeBranchId, getBranch, getServicesFor, getOffersFor, getShopStatus } = useData();
   const { t } = useTranslation();
   
   if (!currentUser) return null;
   const branch = getBranch(activeBranchId);
+  const status = getShopStatus(activeBranchId);
   const services = getServicesFor(activeBranchId);
   const offers = getOffersFor(activeBranchId).filter((o) => o.active).slice(0, 4);
   const popular = services.slice(0, 4);
@@ -86,22 +85,48 @@ export default function CustomerDashboard() {
         </div>
       )}
 
-      <LiveStatusCard branchId={activeBranchId} />
+      <div>
+        <h2 className="text-lg font-bold mb-3 flex items-center gap-2">Live Branch Status</h2>
+        <Card className="p-5 shadow-sm border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="font-semibold">{BRANCH_LABELS[activeBranchId]}</p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className={`h-2 w-2 rounded-full ${status.isOpen ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                <span className="text-sm text-muted-foreground">{status.isOpen ? 'Open Now' : 'Closed'}</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold">{status.waitingCount}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Waiting</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t pt-4">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">In Service</p>
+              <p className="font-medium mt-0.5">{status.inServiceCount} <span className="text-muted-foreground">/ {status.totalChairs}</span></p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Est. Wait</p>
+              <p className="font-medium mt-0.5">~{status.estimatedWaitMin}m</p>
+            </div>
+          </div>
+        </Card>
+      </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Link href="/customer/book" className="group">
+      <div>
+        <Link href="/customer/book" className="group block">
           <Card className="flex h-full items-center gap-4 p-5 shadow-sm transition-transform group-hover:-translate-y-0.5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shrink-0">
               <CalendarPlus className="h-6 w-6" />
             </div>
             <div className="flex-1">
               <p className="font-semibold">{t("book.title")}</p>
               <p className="text-sm text-muted-foreground">{t("book.subtitle")}</p>
             </div>
-            <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1 shrink-0" />
           </Card>
         </Link>
-        <MyQueueCardWrapper />
       </div>
 
       {offers.length > 0 && (
@@ -126,10 +151,4 @@ export default function CustomerDashboard() {
 
     </div>
   );
-}
-
-function MyQueueCardWrapper() {
-  const { activeBranchId } = useData();
-  // reuse MyQueueCard but ensure it renders the join CTA as the second card
-  return <MyQueueCard branchId={activeBranchId} />;
 }

@@ -11,7 +11,7 @@ import {
 import { getDb } from "@/lib/firebase";
 import type { Branch, BranchId } from "@/lib/types";
 
-const BRANCH_SEED: Record<BranchId, Omit<Branch, "nextToken" | "nowServing" | "waitingCount" | "inServiceCount" | "checkedInCount">> = {
+const BRANCH_SEED: Record<BranchId, Branch> = {
   lhasurane: {
     id: "lhasurane",
     name: "Lhasurane",
@@ -25,6 +25,10 @@ const BRANCH_SEED: Record<BranchId, Omit<Branch, "nextToken" | "nowServing" | "w
     isOpen: true,
     availableChairs: 3,
     totalChairs: 4,
+    openingTime: "09:00",
+    closingTime: "20:00",
+    averageServiceTime: 20,
+    activeStaff: 3,
     workingHours: [
       { day: "Mon", open: "09:00", close: "20:00" },
       { day: "Tue", open: "09:00", close: "20:00" },
@@ -48,6 +52,10 @@ const BRANCH_SEED: Record<BranchId, Omit<Branch, "nextToken" | "nowServing" | "w
     isOpen: true,
     availableChairs: 4,
     totalChairs: 6,
+    openingTime: "09:30",
+    closingTime: "21:00",
+    averageServiceTime: 20,
+    activeStaff: 4,
     workingHours: [
       { day: "Mon", open: "09:30", close: "21:00" },
       { day: "Tue", open: "09:30", close: "21:00" },
@@ -71,12 +79,7 @@ export const branchService = {
       const ref = doc(db, "branches", id);
       const snap = await getDoc(ref);
       if (!snap.exists()) {
-        const defaults = { nextToken: 0, nowServing: null, waitingCount: 0, inServiceCount: 0, checkedInCount: 0 };
-        await updateDoc(ref, { ...BRANCH_SEED[id], ...defaults }).catch(
-          async () => {
-            await setDoc(ref, { ...BRANCH_SEED[id], ...defaults });
-          }
-        );
+        await setDoc(ref, { ...BRANCH_SEED[id], updatedAt: new Date().toISOString() });
       }
     }
   },
@@ -91,36 +94,5 @@ export const branchService = {
   async updateBranch(id: BranchId, patch: Partial<Branch>) {
     const db = getDb();
     await updateDoc(doc(db, "branches", id), patch as Record<string, unknown>);
-  },
-
-  async assignToken(id: BranchId): Promise<number> {
-    const db = getDb();
-    const ref = doc(db, "branches", id);
-    return runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      const current = (snap.data()?.nextToken as number) ?? 0;
-      const next = current + 1;
-      tx.update(ref, { nextToken: next });
-      return next;
-    });
-  },
-
-  async setNowServing(id: BranchId, token: number | null) {
-    const db = getDb();
-    await updateDoc(doc(db, "branches", id), { nowServing: token });
-  },
-
-  async incrementStats(id: BranchId, stats: { waiting?: number; inService?: number; checkedIn?: number }) {
-    const db = getDb();
-    const patch: Record<string, any> = {};
-    if (stats.waiting) patch.waitingCount = increment(stats.waiting);
-    if (stats.inService) patch.inServiceCount = increment(stats.inService);
-    if (stats.checkedIn) patch.checkedInCount = increment(stats.checkedIn);
-    
-    if (Object.keys(patch).length > 0) {
-      await updateDoc(doc(db, "branches", id), patch).catch(e => {
-        console.error("Failed to increment branch stats:", e);
-      });
-    }
   },
 };
